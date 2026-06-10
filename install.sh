@@ -22,18 +22,40 @@ echo -e "${CYAN}  typora_plugin macOS installer${NC}"
 echo ""
 
 # ---- Preflight ----
+echo -e "${YELLOW}→${NC} Checking dependencies..."
+
 if [ ! -d "$TYPORA_APP" ]; then
     echo -e "${RED}✗ Typora not found at $TYPORA_APP${NC}"
     echo "  Install from: https://typora.io"
     exit 1
 fi
-echo -e "${GREEN}✓${NC} Typora $TYPORA_APP"
+echo -e "  ${GREEN}✓${NC} Typora.app"
 
 if pgrep -q Typora; then
-    echo -e "${YELLOW}⚠ Typora is running. Please quit it first (Cmd+Q).${NC}"
+    echo -e "${RED}✗ Typora is running. Quit it first (Cmd+Q).${NC}"
     exit 1
 fi
-echo -e "${GREEN}✓${NC} Typora not running"
+echo -e "  ${GREEN}✓${NC} Typora not running"
+
+if ! command -v git &>/dev/null; then
+    echo -e "${RED}✗ git not found. Install Xcode Command Line Tools:${NC}"
+    echo "  xcode-select --install"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} git"
+
+# Ensure loader.mac.js exists (auto-download if missing)
+LOADER_URL="https://raw.githubusercontent.com/YOUR_USER/typora-plugin-macos/main/loader.mac.js"
+if [ ! -f "$SCRIPT_DIR/loader.mac.js" ]; then
+    echo -e "${YELLOW}→${NC} Downloading loader.mac.js..."
+    curl -fsSL "$LOADER_URL" -o "$SCRIPT_DIR/loader.mac.js" || {
+        echo -e "${RED}✗ Failed to download loader.mac.js${NC}"
+        echo "  Make sure loader.mac.js is in the same directory as install.sh"
+        exit 1
+    }
+fi
+echo -e "  ${GREEN}✓${NC} loader.mac.js"
+echo ""
 
 # ---- Clone / update plugin ----
 PLUGIN_REPO="/tmp/typora_plugin"
@@ -87,3 +109,13 @@ echo ""
 echo "  Uninstall : bash uninstall.sh"
 echo "  Update    : bash update.sh"
 echo ""
+
+# ---- Verify ----
+echo -e "${YELLOW}→${NC} Verifying..."
+VERIFY=0
+[ -f "$PLUGIN_DST/loader.mac.js" ]        && echo -e "  ${GREEN}✓${NC} loader.mac.js"        || { echo -e "  ${RED}✗${NC} loader.mac.js MISSING"; VERIFY=1; }
+[ -f "$PLUGIN_DST/global/core/index.js" ] && echo -e "  ${GREEN}✓${NC} plugin core"          || { echo -e "  ${RED}✗${NC} plugin core MISSING"; VERIFY=1; }
+[ -f "$INDEX_HTML.orig" ]                 && echo -e "  ${GREEN}✓${NC} index.html backup"     || { echo -e "  ${RED}✗${NC} index.html backup MISSING"; VERIFY=1; }
+grep -qF "loader.mac.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader injected"       || { echo -e "  ${RED}✗${NC} loader NOT injected"; VERIFY=1; }
+if [ $VERIFY -eq 1 ]; then exit 1; fi
+echo -e "  ${GREEN}✓ All checks passed${NC}\n"
