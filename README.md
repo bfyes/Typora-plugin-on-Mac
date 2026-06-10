@@ -27,14 +27,13 @@ macOS Typora uses **WKWebView** (NOT Electron). No Node.js, no `require()`, no `
 | `install.sh` | 一键安装、更新 / Install or update |
 | `uninstall.sh` | 干净卸载 / Remove everything |
 
-## 包含内容 / What's Bundled
+## 原理 / How
 
-| | 大小 | 文件 | 说明 |
-|------|------|------|------|
-| `plugin/` | 10MB | 250 | 完整 obgnail/typora_plugin |
-| `loader.mac.js` | 11KB | 1 | macOS 适配器 / adapter |
+`install.sh` 会自动从 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) 官方仓库拉取插件，然后注入适配器。不捆绑任何第三方代码。
 
-## 适配层做了什么 / What the Adapter Provides
+`install.sh` clones the official plugin repo at install time. No third-party code is bundled.
+
+## 适配层 / The Adapter
 
 ```
 插件期望 (Electron)               适配器提供 (WKWebView)
