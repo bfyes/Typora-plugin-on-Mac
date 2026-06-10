@@ -18,8 +18,7 @@
 
 ```
 loader.mac.js    ← Polyfill 适配器 (11KB)
-install.sh       ← 一键安装 / Full install
-update.sh        ← 更新插件 / Update, keep settings
+install.sh       ← 一键安装、更新 / Install or update
 uninstall.sh     ← 卸载 / Remove everything
 CLAUDE.md        ← AI agent 上下文（本文件）
 .claude/skills/install.md  ← Claude Code skill

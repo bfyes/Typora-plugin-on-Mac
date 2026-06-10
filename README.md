@@ -24,8 +24,7 @@ macOS Typora uses **WKWebView** (NOT Electron). No Node.js, no `require()`, no `
 
 | 脚本 | 用途 |
 |------|------|
-| `install.sh` | 一键安装（零依赖）/ Full install |
-| `update.sh` | 更新插件，保留设置 / Update, keep settings |
+| `install.sh` | 一键安装、更新 / Install or update |
 | `uninstall.sh` | 干净卸载 / Remove everything |
 
 ## 包含内容 / What's Bundled
