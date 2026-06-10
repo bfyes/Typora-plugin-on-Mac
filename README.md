@@ -5,7 +5,7 @@
 ## 安装 / Install
 
 ```bash
-git clone https://github.com/YOUR_USER/typora-plugin-macos.git
+git clone https://github.com/bfyes/typora-plugin-macos.git
 cd typora-plugin-macos
 bash install.sh
 ```
