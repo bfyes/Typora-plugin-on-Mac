@@ -1,6 +1,8 @@
 # Typora-plugin-on-Mac
 
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
+>
+> 注意：目前无法实现右键菜单的全部实现，仅能实现简单功能如调整图片大小。调整字体大小/颜色等功能均正常实现。
 
 ## 安装 / Install
 
@@ -11,6 +13,10 @@ bash install.sh
 ```
 
 重启 Typora。完成。/ Restart Typora. Done.
+
+![image-20260611001108257](/Users/BillFeng/Library/Application Support/typora-user-images/image-20260611001108257.png)
+
+![1Capture 2026-06-11 00.02.47](/Users/BillFeng/Library/Containers/com.wiheads.paste/Data/tmp/images/1Capture 2026-06-11 00.02.47.png)
 
 ---
 
