@@ -48,15 +48,15 @@ process / Buffer            →     window shim
 
 ## 能用的 / What Works
 
-- ✅ ~40/46 插件（所有核心功能）
-- ✅ 标签页、侧边栏增强、图片查看器、搜索、右键菜单
-- ✅ 命令面板、暗色模式、图表渲染（markmap/ECharts/DrawIO）
-- ✅ **设置持久化** — 通过 localStorage，重启不丢失
+-  ~40/46 插件（所有核心功能）
+-  标签页、侧边栏增强、图片查看器、搜索、右键菜单
+-  命令面板、暗色模式、图表渲染（markmap/ECharts/DrawIO）
+-  **设置持久化** — 通过 localStorage，重启不丢失
 
 ## 不能用的 / What Doesn't
 
-- ❌ `updater` / `commander` / `ripgrep` — 需要 shell/进程
-- ⚠️ `templater` / `resource_manager` — 无法写文件（沙箱）
+- `updater` / `commander` / `ripgrep` — 需要 shell/进程
+- `templater` / `resource_manager` — 无法写文件（沙箱）
 
 ## 卸载 / Uninstall
 
