@@ -1,0 +1,55 @@
+.plugin-callout {
+  background-color: var(--callout-bg-color);
+  border-left: 4px solid var(--callout-left-line-color);
+  padding: 10px 10px 10px 15px;
+  box-shadow: ${this.config.BOX_SHADOW};
+  overflow: hidden;
+}
+
+.plugin-callout[callout-type] {
+  --callout-bg-color: ${this.config.DEFAULT_BACKGROUND_COLOR};
+  --callout-left-line-color: ${this.config.DEFAULT_LEFT_LINE_COLOR};
+  --callout-icon: "${this.config.DEFAULT_ICON}";
+}
+
+.plugin-callout > p:first-child {
+  margin: -10px -10px -10px -15px;
+  padding: 10px 10px 10px 15px;
+  letter-spacing: 1px;
+}
+
+.plugin-callout > p:first-child::before {
+  font-family: ${this.config.FONT_FAMILY};
+  content: var(--callout-icon);
+  margin-right: 0.5em;
+}
+
+.plugin-callout > p:first-child > span:first-child {
+  font-weight: bold;
+  font-size: 0;
+}
+
+.plugin-callout > p:first-child > span:first-child::after {
+  content: attr(data-type);
+  font-size: initial;
+}
+
+.plugin-callout > p:first-child > span:first-child:focus,
+.plugin-callout > p:first-child > span:first-child:focus-within,
+.plugin-callout > p:first-child.md-focus > span:first-child {
+  font-size: initial;
+}
+
+.plugin-callout > p:first-child > span:first-child:focus::after,
+.plugin-callout > p:first-child > span:first-child:focus-within::after,
+.plugin-callout > p:first-child.md-focus > span:first-child::after {
+  content: none;
+}
+
+.callout-folded > p:first-child :not(:first-child) { display: none; }
+.callout-folded > p:not(:first-child) { display: none; }
+
+.callout-folded:has(.md-focus) :not(:first-child):not(.md-softbreak) { display: inherit !important; }
+${hover}
+${color}
+${callouts}

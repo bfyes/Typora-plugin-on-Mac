@@ -16,13 +16,23 @@ cd typora-plugin-macos
 bash install.sh
 ```
 
-Restart Typora. Done.
+Restart Typora. Done. **Zero external dependencies** — everything is bundled.
 
 ### For AI agents (Claude Code, etc.)
 
 > *"Install typora_plugin on my Mac"*
 
 The agent reads `.claude/skills/install.md` and handles everything automatically.
+
+## What's Bundled
+
+| | Size | Files |
+|------|------|-------|
+| `plugin/` | 10MB | 248 files — full obgnail/typora_plugin |
+| `loader.mac.js` | 11KB | macOS polyfill adapter |
+| `install.sh` / `update.sh` / `uninstall.sh` | — | Management scripts |
+
+No `git clone` needed at install time. No network access. Everything ships in one repo.
 
 ## Scripts
 
@@ -31,14 +41,6 @@ The agent reads `.claude/skills/install.md` and handles everything automatically
 | `install.sh` | Full install — clone, copy, inject |
 | `update.sh` | Update plugins, keep settings |
 | `uninstall.sh` | Remove everything, restore backup |
-
-## What's Included
-
-| File | Purpose |
-|------|---------|
-| `loader.mac.js` | 11KB WKWebView → Node.js polyfill adapter |
-| `install.sh` / `update.sh` / `uninstall.sh` | Management scripts |
-| `.claude/skills/install.md` | Claude Code skill for one-shot install |
 
 ## What the Adapter Provides
 

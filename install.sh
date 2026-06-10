@@ -1,7 +1,9 @@
 #!/bin/bash
 # ==============================================================
-# obgnail/typora_plugin macOS Installer
+# obgnail/typora_plugin macOS Installer (self-contained)
 # Usage: bash install.sh
+#
+# Zero external dependencies — everything is bundled.
 # ==============================================================
 set -e
 
@@ -18,104 +20,86 @@ echo "  / / / // / _ \\/ _ \\/ __/ _ \`/ ___/ / // / _ \`/ / _ \\"
 echo " /_/  \\_, / .__/\\___/_/  \\_,_/_/  /_/\\_,_/\\_, /_/_//_/"
 echo "     /___/_/                             /___/"
 echo -e "${NC}"
-echo -e "${CYAN}  typora_plugin macOS installer${NC}"
+echo -e "${CYAN}  typora_plugin macOS installer (self-contained)${NC}"
 echo ""
 
-# ---- Preflight ----
-echo -e "${YELLOW}→${NC} Checking dependencies..."
+# ── Preflight ──────────────────────────────────────────
+echo -e "${YELLOW}→${NC} Checking..."
 
 if [ ! -d "$TYPORA_APP" ]; then
     echo -e "${RED}✗ Typora not found at $TYPORA_APP${NC}"
-    echo "  Install from: https://typora.io"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Typora.app"
 
 if pgrep -q Typora; then
-    echo -e "${RED}✗ Typora is running. Quit it first (Cmd+Q).${NC}"
+    echo -e "${RED}✗ Typora is running. Quit it (Cmd+Q) first.${NC}"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Typora not running"
 
-if ! command -v git &>/dev/null; then
-    echo -e "${RED}✗ git not found. Install Xcode Command Line Tools:${NC}"
-    echo "  xcode-select --install"
+if [ ! -f "$SCRIPT_DIR/loader.mac.js" ]; then
+    echo -e "${RED}✗ loader.mac.js not found in $SCRIPT_DIR${NC}"
     exit 1
 fi
-echo -e "  ${GREEN}✓${NC} git"
-
-# Ensure loader.mac.js exists (auto-download if missing)
-LOADER_URL="https://raw.githubusercontent.com/YOUR_USER/typora-plugin-macos/main/loader.mac.js"
-if [ ! -f "$SCRIPT_DIR/loader.mac.js" ]; then
-    echo -e "${YELLOW}→${NC} Downloading loader.mac.js..."
-    curl -fsSL "$LOADER_URL" -o "$SCRIPT_DIR/loader.mac.js" || {
-        echo -e "${RED}✗ Failed to download loader.mac.js${NC}"
-        echo "  Make sure loader.mac.js is in the same directory as install.sh"
-        exit 1
-    }
-fi
 echo -e "  ${GREEN}✓${NC} loader.mac.js"
+
+if [ ! -d "$SCRIPT_DIR/plugin" ]; then
+    echo -e "${RED}✗ plugin/ not found in $SCRIPT_DIR${NC}"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} plugin/ ($(find "$SCRIPT_DIR/plugin" -type f | wc -l | tr -d ' ') files)"
 echo ""
 
-# ---- Clone / update plugin ----
-PLUGIN_REPO="/tmp/typora_plugin"
-if [ ! -d "$PLUGIN_REPO/.git" ]; then
-    echo -e "${YELLOW}→${NC} Cloning obgnail/typora_plugin..."
-    rm -rf "$PLUGIN_REPO"
-    git clone --depth 1 https://github.com/obgnail/typora_plugin.git "$PLUGIN_REPO"
-else
-    echo -e "${YELLOW}→${NC} Updating plugin repo..."
-    git -C "$PLUGIN_REPO" pull --depth 1 origin master 2>/dev/null || true
-fi
-echo -e "${GREEN}✓${NC} Plugin repo ready"
+# ── Install ────────────────────────────────────────────
+echo -e "${YELLOW}→${NC} Installing..."
 
-# ---- Install ----
-echo -e "${YELLOW}→${NC} Copying plugin files..."
+# 1. Copy plugin files
 rm -rf "$PLUGIN_DST"
-cp -r "$PLUGIN_REPO/plugin" "$PLUGIN_DST"
-echo -e "${GREEN}✓${NC} $(find "$PLUGIN_DST" -type f | wc -l | tr -d ' ') files copied"
+cp -r "$SCRIPT_DIR/plugin" "$PLUGIN_DST"
+echo -e "  ${GREEN}✓${NC} Plugin files copied"
 
-echo -e "${YELLOW}→${NC} Installing macOS adapter..."
+# 2. Copy adapter
 cp "$SCRIPT_DIR/loader.mac.js" "$PLUGIN_DST/loader.mac.js"
-echo -e "${GREEN}✓${NC} loader.mac.js installed"
+echo -e "  ${GREEN}✓${NC} loader.mac.js installed"
 
-# ---- Backup ----
+# 3. Backup
 if [ ! -f "$INDEX_HTML.orig" ]; then
     cp "$INDEX_HTML" "$INDEX_HTML.orig"
-    echo -e "${GREEN}✓${NC} Backup: index.html.orig"
+    echo -e "  ${GREEN}✓${NC} Backup: index.html.orig"
 else
-    echo -e "${GREEN}✓${NC} Backup exists"
+    echo -e "  ${GREEN}✓${NC} Backup exists"
 fi
 
-# ---- Inject ----
+# 4. Inject
 if grep -qF "loader.mac.js" "$INDEX_HTML"; then
-    echo -e "${GREEN}✓${NC} Loader already injected"
+    echo -e "  ${GREEN}✓${NC} Loader already injected"
 else
     sed -i '' 's|</body>|<script src="./plugin/loader.mac.js" defer></script></body>|' "$INDEX_HTML"
-    echo -e "${GREEN}✓${NC} Loader injected into index.html"
+    echo -e "  ${GREEN}✓${NC} Loader injected into index.html"
 fi
+echo ""
 
-# ---- Done ----
+# ── Verify ─────────────────────────────────────────────
+echo -e "${YELLOW}→${NC} Verifying..."
+E=0
+[ -f "$PLUGIN_DST/loader.mac.js" ]        && echo -e "  ${GREEN}✓${NC} loader.mac.js"        || { echo -e "  ${RED}✗${NC} loader.mac.js MISSING"; E=1; }
+[ -f "$PLUGIN_DST/global/core/index.js" ] && echo -e "  ${GREEN}✓${NC} plugin core"          || { echo -e "  ${RED}✗${NC} plugin core MISSING"; E=1; }
+[ -f "$INDEX_HTML.orig" ]                 && echo -e "  ${GREEN}✓${NC} index.html backup"     || { echo -e "  ${RED}✗${NC} index.html backup MISSING"; E=1; }
+grep -qF "loader.mac.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader injected"       || { echo -e "  ${RED}✗${NC} loader NOT injected"; E=1; }
+if [ $E -eq 1 ]; then echo -e "\n${RED}Installation failed.${NC}"; exit 1; fi
+
+# ── Done ───────────────────────────────────────────────
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════${NC}"
-echo -e "${GREEN}  Install Complete! 🎉${NC}"
+echo -e "${GREEN}  Done! 🎉${NC}"
 echo -e "${GREEN}═══════════════════════════════════════${NC}"
 echo ""
-echo "  Next: open Typora. You should see:"
-echo "  • A brief green 'OK' in the top-left"
-echo "  • Plugin panel in the bottom-right"
-echo "  • Right-click → plugin menu items"
+echo "  Open Typora. You should see:"
+echo "  • Green 'OK' flash in the corner"
+echo "  • Plugin panel at bottom-right"
+echo "  • Right-click → plugin menu"
 echo ""
 echo "  Uninstall : bash uninstall.sh"
 echo "  Update    : bash update.sh"
 echo ""
-
-# ---- Verify ----
-echo -e "${YELLOW}→${NC} Verifying..."
-VERIFY=0
-[ -f "$PLUGIN_DST/loader.mac.js" ]        && echo -e "  ${GREEN}✓${NC} loader.mac.js"        || { echo -e "  ${RED}✗${NC} loader.mac.js MISSING"; VERIFY=1; }
-[ -f "$PLUGIN_DST/global/core/index.js" ] && echo -e "  ${GREEN}✓${NC} plugin core"          || { echo -e "  ${RED}✗${NC} plugin core MISSING"; VERIFY=1; }
-[ -f "$INDEX_HTML.orig" ]                 && echo -e "  ${GREEN}✓${NC} index.html backup"     || { echo -e "  ${RED}✗${NC} index.html backup MISSING"; VERIFY=1; }
-grep -qF "loader.mac.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader injected"       || { echo -e "  ${RED}✗${NC} loader NOT injected"; VERIFY=1; }
-if [ $VERIFY -eq 1 ]; then exit 1; fi
-echo -e "  ${GREEN}✓ All checks passed${NC}\n"
