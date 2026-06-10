@@ -14,9 +14,9 @@ bash install.sh
 
 重启 Typora。完成。/ Restart Typora. Done.
 
-![image-20260611001108257](/Users/BillFeng/Library/Application Support/typora-user-images/image-20260611001108257.png)
+![1Capture 2026-06-11 00.10.17](./README.assets/1Capture 2026-06-11 00.10.17.png)
 
-![1Capture 2026-06-11 00.02.47](/Users/BillFeng/Library/Containers/com.wiheads.paste/Data/tmp/images/1Capture 2026-06-11 00.02.47.png)
+![1Capture 2026-06-11 00.11.17](./README.assets/1Capture 2026-06-11 00.11.17.png)
 
 ---
 
