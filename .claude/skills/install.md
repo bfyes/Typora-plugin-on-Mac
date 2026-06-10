@@ -1,5 +1,5 @@
 ---
-name: typora-plugin-macos-install
+name: Typora-plugin-on-Mac-install
 description: 在 macOS Typora 上一键安装 obgnail/typora_plugin。Install obgnail/typora_plugin on macOS Typora in one shot.
 ---
 

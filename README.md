@@ -1,12 +1,12 @@
-# typora-plugin-macos
+# Typora-plugin-on-Mac
 
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
 
 ## 安装 / Install
 
 ```bash
-git clone https://github.com/bfyes/typora-plugin-macos.git
-cd typora-plugin-macos
+git clone https://github.com/bfyes/Typora-plugin-on-Mac.git
+cd Typora-plugin-on-Mac
 bash install.sh
 ```
 

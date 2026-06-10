@@ -1,4 +1,4 @@
-# typora-plugin-macos
+# Typora-plugin-on-Mac
 
 > 在 macOS Typora 上运行 obgnail/typora_plugin 的一键安装器。
 > One-shot installer for obgnail/typora_plugin on macOS Typora.
