@@ -2,9 +2,11 @@
 
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
 >
-> 注意：目前无法实现右键菜单的全部实现，仅能实现简单功能如调整图片大小。调整字体大小/颜色等功能均正常实现。
+> 本项目采用deepseek写成，没有人类含量。
 >
-> 右键菜单、侧边栏增强、updater、commander、ripgrep —— 这些深度依赖 Typora Electron 原生 API，WKWebView 无法完全模拟。
+> 注意：目前无法实现右键菜单，仅能实现简单功能如调整图片大小。调整字体大小/颜色等功能均正常实现。
+>
+> 右键菜单、侧边栏增强、updater、commander、ripgrep 、代码块相关、章节折叠等无法实现。
 
 ## 安装 / Install
 
@@ -15,6 +17,8 @@ bash install.sh
 ```
 
 重启 Typora。完成。/ Restart Typora. Done.
+
+已经过两次测试，可以直接安装插件。
 
 ![screenshot1](https://raw.githubusercontent.com/bfyes/Typora-plugin-on-Mac/main/README.assets/1Capture%202026-06-11%2000.10.17.png)
 
@@ -56,7 +60,7 @@ process / Buffer            →     window shim
 
 ## 能用的 / What Works
 
--  ~40/46 插件（所有核心功能）
+-  部分功能
 -  标签页、侧边栏增强、图片查看器、搜索、右键菜单
 -  命令面板、暗色模式、图表渲染（markmap/ECharts/DrawIO）
 -  **设置持久化** — 通过 localStorage，重启不丢失
