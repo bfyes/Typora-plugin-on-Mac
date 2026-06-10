@@ -10,8 +10,6 @@ This repo bridges the gap with a self-contained 11KB polyfill adapter.
 
 ## Quick Install
 
-### For humans:
-
 ```bash
 git clone https://github.com/YOUR_USER/typora-plugin-macos.git
 cd typora-plugin-macos
@@ -20,20 +18,26 @@ bash install.sh
 
 Restart Typora. Done.
 
-### For AI agents (Claude Code, etc.):
+### For AI agents (Claude Code, etc.)
 
-```
-"Install typora_plugin on my Mac"
-```
+> *"Install typora_plugin on my Mac"*
 
 The agent reads `.claude/skills/install.md` and handles everything automatically.
+
+## Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `install.sh` | Full install — clone, copy, inject |
+| `update.sh` | Update plugins, keep settings |
+| `uninstall.sh` | Remove everything, restore backup |
 
 ## What's Included
 
 | File | Purpose |
 |------|---------|
 | `loader.mac.js` | 11KB WKWebView → Node.js polyfill adapter |
-| `install.sh` | Automated install script |
+| `install.sh` / `update.sh` / `uninstall.sh` | Management scripts |
 | `.claude/skills/install.md` | Claude Code skill for one-shot install |
 
 ## What the Adapter Provides
@@ -70,9 +74,15 @@ Buffer                      →      window.Buffer shim
 ## Uninstall
 
 ```bash
+bash uninstall.sh
+```
+
+Or manually:
+```bash
 cp "/Applications/Typora.app/Contents/Resources/TypeMark/index.html.orig" \
    "/Applications/Typora.app/Contents/Resources/TypeMark/index.html"
 rm -rf "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
+# Settings survive in localStorage — see uninstall.sh for details
 ```
 
 ## Related
