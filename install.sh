@@ -1,9 +1,8 @@
 #!/bin/bash
 # ==============================================================
-# obgnail/typora_plugin macOS Installer (self-contained)
+# obgnail/typora_plugin macOS 安装器（自包含，零依赖）
+# Installer for macOS (self-contained, zero deps)
 # Usage: bash install.sh
-#
-# Zero external dependencies — everything is bundled.
 # ==============================================================
 set -e
 
@@ -20,20 +19,20 @@ echo "  / / / // / _ \\/ _ \\/ __/ _ \`/ ___/ / // / _ \`/ / _ \\"
 echo " /_/  \\_, / .__/\\___/_/  \\_,_/_/  /_/\\_,_/\\_, /_/_//_/"
 echo "     /___/_/                             /___/"
 echo -e "${NC}"
-echo -e "${CYAN}  typora_plugin macOS installer (self-contained)${NC}"
+echo -e "${CYAN}  typora_plugin macOS 安装器 / Installer${NC}"
 echo ""
 
 # ── Preflight ──────────────────────────────────────────
 echo -e "${YELLOW}→${NC} Checking..."
 
 if [ ! -d "$TYPORA_APP" ]; then
-    echo -e "${RED}✗ Typora not found at $TYPORA_APP${NC}"
+    echo -e "${RED}✗ 找不到 Typora / Typora not found: $TYPORA_APP${NC}"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Typora.app"
 
 if pgrep -q Typora; then
-    echo -e "${RED}✗ Typora is running. Quit it (Cmd+Q) first.${NC}"
+    echo -e "${RED}✗ Typora 正在运行。请先退出（Cmd+Q）。/ Typora is running. Quit it first.${NC}"
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Typora not running"
@@ -57,7 +56,7 @@ echo -e "${YELLOW}→${NC} Installing..."
 # 1. Copy plugin files
 rm -rf "$PLUGIN_DST"
 cp -r "$SCRIPT_DIR/plugin" "$PLUGIN_DST"
-echo -e "  ${GREEN}✓${NC} Plugin files copied"
+echo -e "  ${GREEN}✓${NC} 插件文件已复制"
 
 # 2. Copy adapter
 cp "$SCRIPT_DIR/loader.mac.js" "$PLUGIN_DST/loader.mac.js"
@@ -73,10 +72,10 @@ fi
 
 # 4. Inject
 if grep -qF "loader.mac.js" "$INDEX_HTML"; then
-    echo -e "  ${GREEN}✓${NC} Loader already injected"
+    echo -e "  ${GREEN}✓${NC} 已注入 "
 else
     sed -i '' 's|</body>|<script src="./plugin/loader.mac.js" defer></script></body>|' "$INDEX_HTML"
-    echo -e "  ${GREEN}✓${NC} Loader injected into index.html"
+    echo -e "  ${GREEN}✓${NC} 已注入 index.html"
 fi
 echo ""
 

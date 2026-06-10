@@ -1,5 +1,9 @@
-// obgnail/typora_plugin macOS loader
+// ============================================================
+// obgnail/typora_plugin macOS 适配器 / Adapter
+// 通过 <script defer> 注入 index.html，提供 Node.js polyfill
 // Loaded via <script defer> in index.html
+// Provides: reqnode (CommonJS), path, fs, os, process, Buffer
+// ============================================================
 (function() {
     "use strict";
 

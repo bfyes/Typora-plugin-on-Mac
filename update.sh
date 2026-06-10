@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo -e "${YELLOW}Updating typora_plugin...${NC}"
 
-[ -f "$PLUGIN_DST/loader.mac.js" ] || { echo -e "${RED}✗ Not installed. Run install.sh first.${NC}"; exit 1; }
+[ -f "$PLUGIN_DST/loader.mac.js" ] || { echo -e "${RED}✗ 未安装. Run install.sh first.${NC}"; exit 1; }
 pgrep -q Typora && { echo -e "${RED}✗ Quit Typora first (Cmd+Q).${NC}"; exit 1; }
 
 # Re-copy from bundled plugin/ (preserve user settings file)

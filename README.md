@@ -1,14 +1,8 @@
 # typora-plugin-macos
 
-> Run [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) on macOS Typora — with one script.
+> 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
 
-## The Problem
-
-obgnail/typora_plugin only supports Linux/Windows (Electron-based Typora). macOS Typora uses **WKWebView** — no Node.js, no `require()`, no `fs`.
-
-This repo bridges the gap with a self-contained 11KB polyfill adapter.
-
-## Quick Install
+## 安装 / Install
 
 ```bash
 git clone https://github.com/YOUR_USER/typora-plugin-macos.git
@@ -16,83 +10,67 @@ cd typora-plugin-macos
 bash install.sh
 ```
 
-Restart Typora. Done. **Zero external dependencies** — everything is bundled.
+重启 Typora。完成。/ Restart Typora. Done.
 
-### For AI agents (Claude Code, etc.)
+---
 
-> *"Install typora_plugin on my Mac"*
+## 这是什么 / What
 
-The agent reads `.claude/skills/install.md` and handles everything automatically.
+macOS 版 Typora 使用 **WKWebView**（不是 Electron），没有 Node.js 运行时。`loader.mac.js` 是一个 11KB 的适配层，用 XHR 和 JS 补丁提供了插件需要的 `fs`、`path`、`require`、`process` 等 API。
 
-## What's Bundled
+macOS Typora uses **WKWebView** (NOT Electron). No Node.js, no `require()`, no `fs`. This repo bridges the gap with an 11KB polyfill adapter.
 
-| | Size | Files |
-|------|------|-------|
-| `plugin/` | 10MB | 248 files — full obgnail/typora_plugin |
-| `loader.mac.js` | 11KB | macOS polyfill adapter |
-| `install.sh` / `update.sh` / `uninstall.sh` | — | Management scripts |
+## 脚本 / Scripts
 
-No `git clone` needed at install time. No network access. Everything ships in one repo.
+| 脚本 | 用途 |
+|------|------|
+| `install.sh` | 一键安装（零依赖）/ Full install |
+| `update.sh` | 更新插件，保留设置 / Update, keep settings |
+| `uninstall.sh` | 干净卸载 / Remove everything |
 
-## Scripts
+## 包含内容 / What's Bundled
 
-| Script | Purpose |
-|--------|---------|
-| `install.sh` | Full install — clone, copy, inject |
-| `update.sh` | Update plugins, keep settings |
-| `uninstall.sh` | Remove everything, restore backup |
+| | 大小 | 文件 | 说明 |
+|------|------|------|------|
+| `plugin/` | 10MB | 250 | 完整 obgnail/typora_plugin |
+| `loader.mac.js` | 11KB | 1 | macOS 适配器 / adapter |
 
-## What the Adapter Provides
+## 适配层做了什么 / What the Adapter Provides
 
 ```
-Linux/Windows (Electron)          macOS (WKWebView + adapter)
-═══════════════════════════        ═══════════════════════════════
-global / global.reqnode     →      window.reqnode (XHR-based)
-require / module / exports  →      new Function() CommonJS loader
-fs / fs-extra               →      XHR-based readFile, access, promises
-path                        →      JS polyfill (join, dirname, ...)
-os                          →      JS polyfill (homedir, platform, ...)
-process                     →      window.process shim
-Buffer                      →      window.Buffer shim
+插件期望 (Electron)               适配器提供 (WKWebView)
+══════════════════════════        ══════════════════════════
+global.reqnode              →     window.reqnode (XHR + eval)
+require / module.exports    →     new Function() CommonJS
+fs.readFile / fs.access     →     XHR (bundle) + localStorage
+fs.writeFile                →     localStorage 持久化
+path.join / path.dirname    →     JS polyfill
+process / Buffer            →     window shim
 ```
 
-## What Works
+## 能用的 / What Works
 
-- ✅ ~40 of 46 plugins (all core features)
-- ✅ Window tabs, sidebar enhance, image viewer
-- ✅ Search, auto-number, right-click menu
-- ✅ Command palette, dark mode, blur mode
-- ✅ Markmap, ECharts, DrawIO, Mermaid
-- ✅ **Settings persistence** — via localStorage (survives restarts)
+- ✅ ~40/46 插件（所有核心功能）
+- ✅ 标签页、侧边栏增强、图片查看器、搜索、右键菜单
+- ✅ 命令面板、暗色模式、图表渲染（markmap/ECharts/DrawIO）
+- ✅ **设置持久化** — 通过 localStorage，重启不丢失
 
-## What Doesn't
+## 不能用的 / What Doesn't
 
-- ❌ **updater** — no shell access
-- ❌ **commander** — no shell access
-- ❌ **ripgrep** — no shell access
-- ⚠️ **templater** — can't write files (WKWebView sandbox)
-- ⚠️ **resource_manager** — can't write files
+- ❌ `updater` / `commander` / `ripgrep` — 需要 shell/进程
+- ⚠️ `templater` / `resource_manager` — 无法写文件（沙箱）
 
-## Uninstall
+## 卸载 / Uninstall
 
 ```bash
 bash uninstall.sh
 ```
 
-Or manually:
-```bash
-cp "/Applications/Typora.app/Contents/Resources/TypeMark/index.html.orig" \
-   "/Applications/Typora.app/Contents/Resources/TypeMark/index.html"
-rm -rf "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
-# Settings survive in localStorage — see uninstall.sh for details
-```
+## 相关 / Related
 
-## Related
+- [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)
+- [Typora](https://typora.io)
 
-- [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) — the plugin suite
-- [Typora](https://typora.io) — the Markdown editor
-- [Issue: macOS installation method](https://github.com/obgnail/typora_plugin/issues) — detailed technical write-up
+## 许可 / License
 
-## License
-
-MIT — adapter code is original. The plugin suite is under obgnail/typora_plugin's license.
+MIT — 适配器代码原创。插件归 obgnail/typora_plugin 所有。

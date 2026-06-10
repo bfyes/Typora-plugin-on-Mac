@@ -1,61 +1,75 @@
 ---
 name: typora-plugin-macos-install
-description: Install obgnail/typora_plugin on macOS Typora in one shot.
+description: 在 macOS Typora 上一键安装 obgnail/typora_plugin。Install obgnail/typora_plugin on macOS Typora in one shot.
 ---
 
-# Install obgnail/typora_plugin on macOS Typora
+# 在 macOS 上安装 obgnail/typora_plugin / Install on macOS
 
-This skill installs the full [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) suite on macOS Typora, which is NOT officially supported. It works by injecting a polyfill adapter (`loader.mac.js`) that bridges WKWebView APIs to the Node.js APIs the plugin expects.
+本 skill 在**不官方支持**的 macOS Typora 上安装完整的 obgnail/typora_plugin。通过 polyfill 适配器（`loader.mac.js`）将 WKWebView 桥接到 Node.js API。
 
-## Usage
+This skill installs obgnail/typora_plugin on macOS Typora (NOT officially supported). It injects a polyfill adapter that bridges WKWebView → Node.js APIs.
 
-Just say: "Install typora_plugin on my Mac" or invoke this skill.
+## 用法 / Usage
 
-## Steps
+用户说：**"在 Mac 上安装 typora_plugin"** 或调用此 skill。
+Say: "Install typora_plugin on my Mac" or invoke this skill.
 
-1. **Check prerequisites**: Typora must be installed at `/Applications/Typora.app`.
-2. **Clone the plugin repo** if not already present:
-   ```bash
-   git clone --depth 1 https://github.com/obgnail/typora_plugin.git /tmp/typora_plugin
-   ```
-3. **Copy plugin files** into the app bundle:
-   ```bash
-   rm -rf "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
-   cp -r /tmp/typora_plugin/plugin "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
-   ```
-4. **Copy the macOS adapter** into place:
-   ```bash
-   cp loader.mac.js "/Applications/Typora.app/Contents/Resources/TypeMark/plugin/loader.mac.js"
-   ```
-5. **Backup** the original `index.html`:
-   ```bash
-   cp "/Applications/Typora.app/Contents/Resources/TypeMark/index.html" "/Applications/Typora.app/Contents/Resources/TypeMark/index.html.orig"
-   ```
-6. **Inject the loader** by adding ONE line before `</body>`:
-   ```bash
-   sed -i '' 's|</body>|<script src="./plugin/loader.mac.js" defer></script></body>|' "/Applications/Typora.app/Contents/Resources/TypeMark/index.html"
-   ```
-7. **Ask the user to restart Typora**.
+## 步骤 / Steps
 
-## How it works
+### 1. 检查 / Check
+Typora 在 `/Applications/Typora.app`，不运行。/ Typora at `/Applications/Typora.app`, not running.
 
-macOS Typora uses WKWebView (NOT Electron). The plugin expects Node.js APIs (`fs`, `path`, `require`, `process`) that don't exist. The adapter provides:
-
-- **`reqnode()`** — XHR-based CommonJS module loader
-- **`path` polyfill** — `join()`, `dirname()`, `basename()`, etc.
-- **`fs` / `fs-extra` polyfill** — synchronous + async file reading via XHR
-- **`process`, `Buffer`, `setImmediate`** — global shims
-- **Path normalization** — handles `../` and `./` for WKWebView XHR
-
-## Limitations
-
-- File **writes** are no-ops (WKWebView sandbox)
-- **updater**, **commander**, **ripgrep** plugins won't work (need shell access)
-- User settings must be edited manually
-
-## Uninstall
+### 2. 拷贝 / Copy
+插件和适配器都已在仓库中，直接复制：
+Everything is bundled in this repo — just copy:
 
 ```bash
-cp "/Applications/Typora.app/Contents/Resources/TypeMark/index.html.orig" "/Applications/Typora.app/Contents/Resources/TypeMark/index.html"
+rm -rf "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
+cp -r plugin "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
+cp loader.mac.js "/Applications/Typora.app/Contents/Resources/TypeMark/plugin/loader.mac.js"
+```
+
+### 3. 备份 / Backup
+```bash
+cp "/Applications/Typora.app/Contents/Resources/TypeMark/index.html" \
+   "/Applications/Typora.app/Contents/Resources/TypeMark/index.html.orig"
+```
+
+### 4. 注入 / Inject
+```bash
+sed -i '' 's|</body>|<script src="./plugin/loader.mac.js" defer></script></body>|' \
+    "/Applications/Typora.app/Contents/Resources/TypeMark/index.html"
+```
+
+### 5. 验证 / Verify
+- `/Applications/.../plugin/loader.mac.js` 存在 / exists
+- `/Applications/.../plugin/global/core/index.js` 存在 / exists
+- `index.html` 包含 / contains `loader.mac.js`
+
+### 6. 重启 / Restart
+让用户重启 Typora。/ Ask user to restart Typora.
+
+## 原理 / How it works
+
+macOS Typora = WKWebView（非 Electron），没有 Node API。适配器提供 / provides：
+
+| 插件期望 (Electron/Node) | 适配器 (WKWebView) |
+|------|------|
+| `global.reqnode` | `window.reqnode` (XHR + eval) |
+| `module.exports` | `new Function()` CommonJS |
+| `fs.readFile` / `access` | XHR (bundle) + localStorage |
+| `fs.writeFile` | localStorage |
+| `path` | JS polyfill |
+| `process` / `Buffer` | `window` shim |
+
+## 限制 / Limitations
+
+- 文件写入走 localStorage / Writes go to localStorage（重启不丢失）
+- `updater` / `commander` / `ripgrep` 不工作（需要 shell）
+- 用户设置通过插件 UI 修改，自动持久化
+
+## 卸载 / Uninstall
+```bash
+cp index.html.orig index.html
 rm -rf "/Applications/Typora.app/Contents/Resources/TypeMark/plugin"
 ```
