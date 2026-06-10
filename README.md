@@ -16,9 +16,9 @@ bash install.sh
 
 重启 Typora。完成。/ Restart Typora. Done.
 
-![1Capture 2026-06-11 00.10.17](./README.assets/1Capture 2026-06-11 00.10.17.png)
+![screenshot1](https://raw.githubusercontent.com/bfyes/Typora-plugin-on-Mac/main/README.assets/1Capture%202026-06-11%2000.10.17.png)
 
-![1Capture 2026-06-11 00.11.17](./README.assets/1Capture 2026-06-11 00.11.17.png)
+![screenshot2](https://raw.githubusercontent.com/bfyes/Typora-plugin-on-Mac/main/README.assets/1Capture%202026-06-11%2000.11.17.png)
 
 ---
 
