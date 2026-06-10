@@ -3,6 +3,8 @@
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
 >
 > 注意：目前无法实现右键菜单的全部实现，仅能实现简单功能如调整图片大小。调整字体大小/颜色等功能均正常实现。
+>
+> 右键菜单、侧边栏增强、updater、commander、ripgrep —— 这些深度依赖 Typora Electron 原生 API，WKWebView 无法完全模拟。
 
 ## 安装 / Install
 
