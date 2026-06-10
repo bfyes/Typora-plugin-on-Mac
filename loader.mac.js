@@ -68,11 +68,11 @@
 
     var _fs = {
         promises: { readFile: function(fp, opts) { return _fs.readFile(fp); }, writeFile: function(fp, data) { return _fs.writeFile(fp, data); }, access: function(fp) { return _fs.access(fp); }, },
-        readFileSync: function(fp) { return _readBundle(fp); },
+        readFileSync: function(fp) { var key = "tp:" + fp; var cached = localStorage.getItem(key); if (cached !== null) return cached; var content = _readBundle(fp); return content; },
         readFile: function(fp) { var s = this; return new Promise(function(res, rej) { try { res(s.readFileSync(fp)); } catch(e) { rej(e); } }); },
         access: function(fp) { var s = this; return new Promise(function(res, rej) { try { s.readFileSync(fp); res(); } catch(e) { rej(e); } }); },
-        writeFileSync: function() {},
-        writeFile: function() { return Promise.resolve(); },
+        writeFileSync: function(fp, data) { localStorage.setItem("tp:" + fp, data); },
+        writeFile: function(fp, data) { localStorage.setItem("tp:" + fp, data); return Promise.resolve(); },
         appendFileSync: function() {},
         existsSync: function(fp) { try { _readBundle(fp); return true; } catch(e) { return false; } },
         statSync: function(fp) { return { isFile: function() { return !!fp.match(/\.[a-z]+$/); }, isDirectory: function() { return !fp.match(/\.[a-z]+$/); } }; },

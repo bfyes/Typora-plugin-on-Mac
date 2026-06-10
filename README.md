@@ -57,6 +57,7 @@ Buffer                      →      window.Buffer shim
 - ✅ Search, auto-number, right-click menu
 - ✅ Command palette, dark mode, blur mode
 - ✅ Markmap, ECharts, DrawIO, Mermaid
+- ✅ **Settings persistence** — via localStorage (survives restarts)
 
 ## What Doesn't
 
