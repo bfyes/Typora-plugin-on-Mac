@@ -4,9 +4,9 @@
 >
 > 通过本地 Node.js 服务解锁 ripgrep 搜索、shell 命令、真实文件读写等功能。
 
-![1Capture 2026-06-11 12.11.05](./README.assets/1Capture 2026-06-11 12.11.05.png)
+![screenshot1](https://github.com/bfyes/Typora-plugin-on-Mac/blob/main/README.assets/1Capture%202026-06-11%2012.11.05.png?raw=true)
 
-![1Capture 2026-06-11 12.11.09](./README.assets/1Capture 2026-06-11 12.11.09.png)
+![screenshot2](https://github.com/bfyes/Typora-plugin-on-Mac/blob/main/README.assets/1Capture%202026-06-11%2012.11.09.png?raw=true)
 
 ## 前置要求 / Prerequisites
 
