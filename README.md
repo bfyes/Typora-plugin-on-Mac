@@ -2,11 +2,17 @@
 
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
 >
-> 本项目采用deepseek写成，没有人类含量。
->
-> 注意：目前无法实现右键菜单，仅能实现简单功能如调整图片大小。调整字体大小/颜色等功能均正常实现。
->
-> 右键菜单、侧边栏增强、updater、commander、ripgrep 、代码块相关、章节折叠等无法实现。
+> 通过本地 Node.js 服务解锁 ripgrep 搜索、shell 命令、真实文件读写等功能。
+
+![1Capture 2026-06-11 12.11.05](./README.assets/1Capture 2026-06-11 12.11.05.png)
+
+![1Capture 2026-06-11 12.11.09](./README.assets/1Capture 2026-06-11 12.11.09.png)
+
+## 前置要求 / Prerequisites
+
+- macOS Typora
+- **Node.js**（必须）— `brew install node` 或 https://nodejs.org
+- git
 
 ## 安装 / Install
 
@@ -16,59 +22,49 @@ cd Typora-plugin-on-Mac
 bash install.sh
 ```
 
-重启 Typora。完成。/ Restart Typora. Done.
+重启 Typora 即完成。
 
-已经过两次测试，可以直接安装插件。
+## 原理 / How it works
 
-![screenshot1](https://raw.githubusercontent.com/bfyes/Typora-plugin-on-Mac/main/README.assets/1Capture%202026-06-11%2000.10.17.png)
+macOS 版 Typora 使用 **WKWebView**（不是 Electron），没有 Node.js 运行时。本项目通过两层提供插件运行环境：
 
-![screenshot2](https://raw.githubusercontent.com/bfyes/Typora-plugin-on-Mac/main/README.assets/1Capture%202026-06-11%2000.11.17.png)
+| 组件 | 说明 |
+|------|------|
+| `loader.mac.js` | WKWebView 内适配器，提供 CommonJS 模块加载 + HTTP 调用 bridge |
+| `plugin-bridge.js` | 本地 Node.js HTTP 服务（端口 45678），提供真实 fs/child_process/os/zlib |
 
----
+```
+Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
+```
 
-## 这是什么 / What
+## 功能 / Features
 
-macOS 版 Typora 使用 **WKWebView**（不是 Electron），没有 Node.js 运行时。`loader.mac.js` 是一个 11KB 的适配层，用 XHR 和 JS 补丁提供了插件需要的 `fs`、`path`、`require`、`process` 等 API。
+45 个插件可用，16 个默认禁用（可在设置中启用）：
 
-macOS Typora uses **WKWebView** (NOT Electron). No Node.js, no `require()`, no `fs`. This repo bridges the gap with an 11KB polyfill adapter.
+| 功能 | 快捷键 |
+|------|--------|
+| 代码块增强（copy/fold/indent） | — |
+| commander shell 命令 | Ctrl+Shift+P |
+| 文件标签栏 | — |
+| 右键菜单 | 右键 |
+| markmap 思维导图 | — |
+| plantUML / DrawIO / ECharts | — |
+| 图片查看器 | — |
+| 文字样式、自动编号 | — |
+| 暗色模式、只读模式等 | — |
+
+## 已知限制 / Known Issues
+
+- **markdownlint 语法检查**：显示为空，暂不可用（Worker 中的库加载兼容性）
+- **ripgrep 文件搜索**：不可用（依赖 `vscode-ripgrep` 模块解析 rg 二进制路径）
+- 右键菜单有限
 
 ## 脚本 / Scripts
 
 | 脚本 | 用途 |
 |------|------|
-| `install.sh` | 一键安装、更新 / Install or update |
-| `uninstall.sh` | 干净卸载 / Remove everything |
-
-## 原理 / How
-
-`install.sh` 会自动从 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) 官方仓库拉取插件，然后注入适配器。不捆绑任何第三方代码。
-
-`install.sh` clones the official plugin repo at install time. No third-party code is bundled.
-
-## 适配层 / The Adapter
-
-```
-插件期望 (Electron)               适配器提供 (WKWebView)
-══════════════════════════        ══════════════════════════
-global.reqnode              →     window.reqnode (XHR + eval)
-require / module.exports    →     new Function() CommonJS
-fs.readFile / fs.access     →     XHR (bundle) + localStorage
-fs.writeFile                →     localStorage 持久化
-path.join / path.dirname    →     JS polyfill
-process / Buffer            →     window shim
-```
-
-## 能用的 / What Works
-
--  部分功能
--  标签页、侧边栏增强、图片查看器、搜索、右键菜单
--  命令面板、暗色模式、图表渲染（markmap/ECharts/DrawIO）
--  **设置持久化** — 通过 localStorage，重启不丢失
-
-## 不能用的 / What Doesn't
-
-- `updater` / `commander` / `ripgrep` — 需要 shell/进程
-- `templater` / `resource_manager` — 无法写文件（沙箱）
+| `install.sh` | 一键安装/更新 |
+| `uninstall.sh` | 卸载（含 bridge/launchd 清理） |
 
 ## 卸载 / Uninstall
 
@@ -76,11 +72,13 @@ process / Buffer            →     window shim
 bash uninstall.sh
 ```
 
-## 相关 / Related
+## Bridge 运维
 
-- [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)
-- [Typora](https://typora.io)
+```bash
+curl http://127.0.0.1:45678/health    # 状态
+cat ~/.typora_plugin_bridge.log       # 日志
+```
 
 ## 许可 / License
 
-MIT — 适配器代码原创。插件归 obgnail/typora_plugin 所有。
+MIT — 适配器代码原创。插件归 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin) 所有。
