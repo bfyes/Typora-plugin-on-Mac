@@ -794,22 +794,6 @@ function _isPluginPath(fp) {
     // ════════════════════════════════════════════════════════
 
 window.addEventListener("load", function() {
-        // White strip to block content behind tab bar
-        var _topStrip = document.createElement("div");
-        _topStrip.id = "plugin-top-strip";
-        _topStrip.style.cssText = "position:fixed;top:0;left:0;width:100vw;height:26px;background:#fff;z-index:897;pointer-events:none;";
-        document.body.appendChild(_topStrip);
-
-        // Move word count and adjacent button to bottom-left
-        var _footerFix = document.createElement("style");
-        _footerFix.textContent = "footer.ty-footer { justify-content: flex-start !important; padding-left: 30px !important; } footer.ty-footer > * { margin-left: 0 !important; margin-right: 12px !important; }";
-        document.head.appendChild(_footerFix);
-
-        // Fix tab bar position & width
-        var _tabFixStyle = document.createElement("style");
-        _tabFixStyle.textContent = "#plugin-window-tab { top: 26px !important; height: 34px !important; width: 100vw !important; left: 0 !important; background-color: #fff !important; } #plugin-window-tab .tab-bar { background-color: #fff !important; }";
-        document.head.appendChild(_tabFixStyle);
-
         // Bridge connectivity check
         if (_ready) {
             try {
