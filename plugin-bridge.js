@@ -17,6 +17,26 @@ const cp = require("child_process");
 const zlib = require("zlib");
 const crypto = require("crypto");
 
+// ── Enrich PATH for launchd context (homebrew, etc.) ────────
+// launchd starts with minimal PATH, so homebrew binaries are missing
+(function() {
+    var extraPaths = [
+        "/opt/homebrew/bin",
+        "/opt/homebrew/sbin",
+        "/usr/local/bin",
+        "/usr/local/sbin",
+        "/opt/homebrew/opt/node/bin",
+    ];
+    var currentPath = (process.env.PATH || "").split(":");
+    var newPath = currentPath.slice();
+    extraPaths.forEach(function(p) {
+        if (newPath.indexOf(p) === -1) {
+            try { if (fs.existsSync(p)) newPath.push(p); } catch(e) {}
+        }
+    });
+    process.env.PATH = newPath.join(":");
+})();
+
 // ── Config ─────────────────────────────────────────────────
 const PORT = parseInt(process.env.BRIDGE_PORT || process.argv[process.argv.indexOf("--port") + 1]) || 45678;
 const TOKEN_FILE = path.join(os.homedir(), ".typora_plugin_bridge_token");
@@ -117,14 +137,14 @@ var ROUTES = {
         return fs.readdirSync(params[0], params[1] || {});
     },
     "fs.stat": function (params) {
-        return fsp.stat(params[0]);
+        return fsp.stat(params[0]).then(serializeStat);
     },
     "fs.statSync": function (params) {
         var s = fs.statSync(params[0]);
         return serializeStat(s);
     },
     "fs.lstat": function (params) {
-        return fsp.lstat(params[0]);
+        return fsp.lstat(params[0]).then(serializeStat);
     },
     "fs.lstatSync": function (params) {
         var s = fs.lstatSync(params[0]);
@@ -247,6 +267,8 @@ var ROUTES = {
         var args = params[1] || [];
         var opts = params[2] || {};
         opts.shell = opts.shell !== undefined ? opts.shell : true;
+        // Merge env so PATH is preserved (plugins may pass partial env)
+        opts.env = Object.assign({}, process.env, opts.env || {});
         return new Promise(function (resolve) {
             var child = cp.spawn(cmd, args, opts);
             var stdout = "";
@@ -324,6 +346,29 @@ var ROUTES = {
             socket.on("timeout", function () { socket.destroy(); resolve({ ok: false, error: "timeout" }); });
             socket.connect(params[0], params[1]);
         });
+    },
+
+    // ── util ──
+    "util.which": function (params) {
+        var cmd = params[0];
+        try {
+            var result = cp.execSync("which " + cmd, { encoding: "utf8" }).trim();
+            if (result) return result;
+        } catch (e) {}
+        // Fallback: check common paths
+        var paths = [
+            "/usr/local/bin/" + cmd,
+            "/opt/homebrew/bin/" + cmd,
+            "/usr/bin/" + cmd,
+            "/bin/" + cmd,
+        ];
+        for (var i = 0; i < paths.length; i++) {
+            try { if (fs.existsSync(paths[i]) && fs.accessSync(paths[i], fs.constants.X_OK) === undefined) return paths[i]; } catch (e) {}
+        }
+        return null;
+    },
+    "util.whichSync": function (params) {
+        return ROUTES["util.which"](params);
     },
 };
 

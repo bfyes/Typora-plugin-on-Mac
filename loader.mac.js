@@ -146,6 +146,8 @@
                     fn(m, m.exports, function(id) {
                         // Resolve require() calls relative to the requiring file's directory
                         if (id === "path") return _path;
+                        if (id === "fs" || id === "fs-extra") return _fs;
+                        if (id === "os") return { EOL: "\n", homedir: function() { return call("os.homedir", []); }, platform: function() { return "darwin"; } };
                         if (id[0] === ".") return _loadLib(_path.join(dir, id), dir);
                         return _loadLib(id);
                     }, dir, path);
@@ -161,6 +163,8 @@
                     var fn2 = new Function("module", "exports", "require", "__dirname", "__filename", "__export__", wrapped);
                     fn2(m, m.exports, function(id) {
                         if (id === "path") return _path;
+                        if (id === "fs" || id === "fs-extra") return _fs;
+                        if (id === "os") return { EOL: "\n", homedir: function() { return call("os.homedir", []); }, platform: function() { return "darwin"; } };
                         if (id[0] === ".") return _loadLib(_path.join(dir, id), dir);
                         return _loadLib(id);
                     }, dir, path, __export__);
@@ -555,8 +559,31 @@ function _isPluginPath(fp) {
                     openPath: function(p) {
                         callAsync("shell.openPath", [p]).catch(function() {});
                     },
+                    showItemInFolder: function(p) {
+                        callAsync("shell.openPath", [p]).catch(function() {});
+                    },
                 },
-                ipcRenderer: { on: function() {}, send: function() {} }
+                ipcRenderer: {
+                    on: function(channel, listener) { /* stub */ },
+                    send: function(channel, ...args) { /* stub */ },
+                    invoke: function(channel, ...args) { return Promise.resolve({ canceled: true, filePaths: [] }); },
+                    once: function(channel, listener) { /* stub */ },
+                    removeListener: function(channel, listener) { /* stub */ },
+                },
+                remote: {
+                    dialog: {
+                        showOpenDialog: function() { return Promise.resolve({ canceled: true, filePaths: [] }); },
+                        showSaveDialog: function() { return Promise.resolve({ canceled: true, filePath: "" }); },
+                    },
+                    BrowserWindow: {
+                        getAllWindows: function() { return []; },
+                        getFocusedWindow: function() { return null; },
+                    },
+                },
+                app: {
+                    getPath: function(name) { return call("os.homedir", []) + "/Library/Application Support/Typora"; },
+                    getVersion: function() { return "1.0.0"; },
+                },
             };
         }
 
@@ -625,6 +652,22 @@ function _isPluginPath(fp) {
         };
         if (id === "stream") return { Transform: function() { return { on: function(){}, pipe: function(){}, write: function(){}, end: function(){} }; } };
         if (["events","buffer","assert","string_decoder","tty","worker_threads","supports-color"].indexOf(id) >= 0) return {};
+
+        // ── vscode-ripgrep stub: return system rg path ──
+        // ripgrep plugin does: reqnode("vscode-ripgrep").rgPath
+        // We ask bridge to locate the system-installed rg binary
+        if (id === "vscode-ripgrep") {
+            var rgPath = null;
+            try { rgPath = call("util.which", ["rg"]); } catch(e) {}
+            if (!rgPath) {
+                // Fallback: check common macOS paths synchronously
+                var candidates = ["/opt/homebrew/bin/rg", "/usr/local/bin/rg", "/usr/bin/rg"];
+                for (var ci = 0; ci < candidates.length; ci++) {
+                    try { if (call("fs.existsSync", [candidates[ci]])) { rgPath = candidates[ci]; break; } } catch(e) {}
+                }
+            }
+            return { rgPath: rgPath || "/usr/bin/rg" };
+        }
 
         // ── Resolve and load plugin module ──
         var fp = id;

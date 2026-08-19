@@ -1,8 +1,9 @@
 # Typora-plugin-on-Mac
 
-> 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)，一键安装。
+> 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)。
 >
-> 通过本地 Node.js 服务解锁 ripgrep 搜索、shell 命令、真实文件读写等功能。
+> ⚠️ **本项目是 Windows/Linux 插件的非官方 macOS 移植。**
+> macOS 版 Typora 使用 **WKWebView**（非 Electron），没有 Node.js 运行时，大量插件功能受限。本项目通过本地 Node.js bridge + 一系列 hack 尽力恢复能力，但仍有部分功能不可用。
 
 ![screenshot1](https://github.com/bfyes/Typora-plugin-on-Mac/blob/main/README.assets/1Capture%202026-06-11%2012.11.05.png?raw=true)
 
@@ -12,6 +13,7 @@
 
 - macOS Typora
 - **Node.js**（必须）— `brew install node` 或 https://nodejs.org
+- **ripgrep**（可选，用于全文搜索）— `brew install ripgrep`
 - git
 
 ## 安装 / Install
@@ -37,21 +39,91 @@ macOS 版 Typora 使用 **WKWebView**（不是 Electron），没有 Node.js 运�
 Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 ```
 
+### 适配 Hack / Adaptation Hacks
+
+为让原本依赖 Electron 的插件在 WKWebView 上运行，做了以下适配：
+
+| Hack | 说明 |
+|------|------|
+| `vscode-ripgrep` 伪造 | ripgrep 插件 `reqnode("vscode-ripgrep").rgPath` → bridge 探测系统 `rg` 路径 |
+| PATH 注入 | launchd 环境 PATH 缺少 homebrew，bridge 启动时自动注入 `/opt/homebrew/bin` 等 |
+| `spawn` 环境合并 | 插件传入的 `env` 与 `process.env` 合并，避免 PATH 丢失 |
+| `fs.stat` 序列化 | 异步 stat 返回的对象经 HTTP 传输后丢失原型方法，bridge 序列化 `isFile()` / `isDirectory()` |
+| Worker polyfill | WKWebView 的 Blob Worker 无法 XHR `file://`，markdownlint 改为主线程内联执行 |
+| Electron stub | `ipcRenderer` / `remote.dialog` / `BrowserWindow` 等 Electron API 返回空桩 |
+| 模块加载器 require 补全 | Worker polyfill 中的 `require("fs")` / `require("os")` 路由到 bridge stub |
+
 ## 功能 / Features
 
-45 个插件可用，16 个默认禁用（可在设置中启用）：
+原仓库共 45 个插件。以下按 macOS 实际兼容情况分类：
 
-| 功能 | 快捷键 |
-|------|--------|
-| 代码块增强（copy/fold/indent） | — |
-| commander shell 命令 | Ctrl+Shift+P |
-| 文件标签栏 | — |
-| 右键菜单 | 右键 |
-| markmap 思维导图 | — |
-| plantUML / DrawIO / ECharts | — |
-| 图片查看器 | — |
-| 文字样式、自动编号 | — |
-| 暗色模式、只读模式等 | — |
+### ✅ 可用（纯前端，无 Node 依赖）
+
+| 插件 | 功能 | 默认 |
+|------|------|------|
+| `auto_number` | 章节、表格、图片、代码块自动编号 | ✅ |
+| `resize_image` | 调整图片显示大小 | ✅ |
+| `resize_table` | 调整表格行高列宽 | ✅ |
+| `text_stylize` | 文字风格化（字体、字号、颜色、样式） | ✅ |
+| `fence_enhance` | 代码块增强（复制、折叠、格式化） | ✅ |
+| `md_padding` | 中英文混排自动空格 | ✅ |
+| `easy_modify` | 编辑工具 | ✅ |
+| `editor_width_slider` | 写作区宽度调整 | ✅ |
+| `cjk_symbol_pairing` | 中文符号配对 | ✅ |
+| `right_outline` | 右侧大纲目录 | ✅ |
+| `slash_commands` | 斜杠命令 | ✅ |
+| `templater` | 文件模板 | ✅ |
+| `callouts` | Callouts 提示框 | ✅ |
+| `kanban` | 看板 | ✅ |
+| `timeline` | 时间线 | ✅ |
+| `dark` | 夜间模式 | ✅ |
+| `no_image` | 无图模式 | ✅ |
+| `blur` | 模糊模式 | ✅ |
+| `myopic_defocus` | 离焦视力舒缓 | ✅ |
+| `read_only` | 只读模式 | ✅ |
+| `image_viewer` | 图片查看器 | ✅ |
+| `sidebar_enhance` | 侧边栏增强 | ✅ |
+| `preferences` | 插件配置面板 | ✅ |
+| `command_palette` | 命令面板 | ✅ |
+| `markmap` | 思维导图 | ✅ |
+| `echarts` | Echarts 图表 | ✅ |
+| `chart` | Chart.js 图表 | ✅ |
+| `drawIO` | DrawIO 图表 | ✅ |
+| `abc` | 乐谱（abc.js） | ✅ |
+| `calendar` | 日历组件 | ✅ |
+| `wavedrom` | 时序波形图 | ✅ |
+| `marp` | Marp 演示文稿 | ✅ |
+
+### ✅ 可用（通过 bridge 提供后端能力）
+
+| 插件 | 功能 | 说明 |
+|------|------|------|
+| `ripgrep` | 全文搜索 | 伪造 `vscode-ripgrep` 模块，探测系统 `rg`（需 `brew install ripgrep`） |
+| `search_multi` | 多元文件搜索 | bridge 提供 fs 遍历 + stat 序列化 |
+| `markdownlint` | Markdown 语法检查 | Worker polyfill 主线程执行，require fs/os 路由到 bridge |
+| `commander` | 命令行环境 | bridge 提供 child_process（spawn/exec/execSync） |
+| `updater` | 一键升级插件 | bridge 提供 fs 读写 |
+| `right_click_menu` | 右键菜单 | 功能有限 |
+| `datatables` | 表格增强（搜索、排序、分页） | 纯前端 jQuery 插件 |
+
+### ❌ 不可用 / 受限
+
+| 插件 | 功能 | 原因 |
+|------|------|------|
+| `window_tab` | 标签页管理 | 依赖 Electron 窗口管理 API，WKWebView 无此能力 |
+| `html_editor` | HTML 编辑器 | 依赖 `crypto.randomBytes`，stub 不完整 |
+| `remote_control` | Typora 自动化 | 依赖 Electron IPC |
+| `export_enhance` | 导出增强 | 依赖 Electron 导出流程 |
+| `article_uploader` | 博客上传 | 依赖 Node 网络模块 |
+| `cipher` | 文件加密 | 依赖 `crypto.randomBytes` |
+| `plantUML` | PlantUML 图表 | 需启动 Java 服务端 |
+| `mouse_gestures` | 鼠标手势 | WKWebView 事件限制 |
+| `pie_menu` | 圆盘菜单 | 兼容性问题 |
+| `chat` | 聊天组件 | 兼容性问题 |
+| `bookmark` | 书签管理器 | 受限 |
+| `cursor_history` | 光标跳转 | 受限 |
+
+> 以上分类基于测试环境，不同 Typora 版本可能有差异。可在 `preferences` 面板中尝试启用/禁用各插件，但不保证全部可用。
 
 ## 常见问题 / Troubleshooting
 
@@ -59,12 +131,8 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
   - 运行 `sudo xattr -dr com.apple.provenance /Applications/Typora.app`（推荐）
   - 系统设置 → 隐私与安全性 → 应用管理 → 授权终端
 - 安装脚本会自动检测此问题并给出提示。
-
-## 已知限制 / Known Issues
-
-- **markdownlint 语法检查**：显示为空，暂不可用（Worker 中的库加载兼容性）
-- **ripgrep 文件搜索**：不可用（依赖 `vscode-ripgrep` 模块解析 rg 二进制路径）
-- 右键菜单有限
+- **ripgrep 搜索无结果**：确认已安装 ripgrep（`brew install ripgrep`），bridge 日志中检查 PATH 是否包含 homebrew。
+- **bridge 未启动**：查看日志 `cat ~/.typora_plugin_bridge.log`，或手动重启 `launchctl unload && launchctl load`。
 
 ## 脚本 / Scripts
 
