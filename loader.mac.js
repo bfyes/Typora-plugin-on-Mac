@@ -260,6 +260,21 @@ function _isPluginPath(fp) {
     // ════════════════════════════════════════════════════════
     // fs — bridge for real I/O, XHR for plugin bundle files
     // ════════════════════════════════════════════════════════
+    // Wrap stat objects from bridge: convert _isFile/_isDirectory booleans to methods
+    function _wrapStat(st) {
+        if (!st) return st;
+        if (st._isFile !== undefined) {
+            st.isFile = function() { return st._isFile; };
+            st.isDirectory = function() { return st._isDirectory; };
+            st.isBlockDevice = function() { return st._isBlockDevice; };
+            st.isCharacterDevice = function() { return st._isCharacterDevice; };
+            st.isSymbolicLink = function() { return st._isSymbolicLink; };
+            st.isFIFO = function() { return st._isFIFO; };
+            st.isSocket = function() { return st._isSocket; };
+        }
+        return st;
+    }
+
     var _fs = {
         promises: {},
 
@@ -342,16 +357,16 @@ function _isPluginPath(fp) {
         },
 
         statSync: function(fp) {
-            return call("fs.statSync", [fp]);
+            return _wrapStat(call("fs.statSync", [fp]));
         },
         stat: function(fp) {
-            return callAsync("fs.stat", [fp]);
+            return callAsync("fs.stat", [fp]).then(_wrapStat);
         },
         lstatSync: function(fp) {
-            return call("fs.lstatSync", [fp]);
+            return _wrapStat(call("fs.lstatSync", [fp]));
         },
         lstat: function(fp) {
-            return callAsync("fs.lstat", [fp]);
+            return callAsync("fs.lstat", [fp]).then(_wrapStat);
         },
 
         mkdirSync: function(p, opts) {

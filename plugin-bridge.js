@@ -462,16 +462,21 @@ ROUTES["shell.openPath"] = function (params) {
 // ── Stats serializer (Stat objects don't JSON-serialize) ──
 function serializeStat(st) {
     if (!st) return null;
+    // JSON can't transfer functions, so we return boolean properties.
+    // The loader wraps them into methods on the client side.
     return {
         dev: st.dev, ino: st.ino, mode: st.mode, nlink: st.nlink,
         uid: st.uid, gid: st.gid, rdev: st.rdev, size: st.size,
         blksize: st.blksize, blocks: st.blocks,
         atimeMs: st.atimeMs, mtimeMs: st.mtimeMs, ctimeMs: st.ctimeMs,
         birthtimeMs: st.birthtimeMs,
-        isFile: st.isFile(), isDirectory: st.isDirectory(),
-        isBlockDevice: st.isBlockDevice(), isCharacterDevice: st.isCharacterDevice(),
-        isSymbolicLink: st.isSymbolicLink(), isFIFO: st.isFIFO(),
-        isSocket: st.isSocket(),
+        _isFile: st.isFile(),
+        _isDirectory: st.isDirectory(),
+        _isBlockDevice: st.isBlockDevice(),
+        _isCharacterDevice: st.isCharacterDevice(),
+        _isSymbolicLink: st.isSymbolicLink(),
+        _isFIFO: st.isFIFO(),
+        _isSocket: st.isSocket(),
     };
 }
 
