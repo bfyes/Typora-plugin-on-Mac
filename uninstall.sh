@@ -65,4 +65,25 @@ echo "  To clear them: open Typora, right-click → Inspect Element,"
 echo "  then in the Console tab run: localStorage.clear()"
 echo ""
 
+# ── Optionally uninstall ripgrep ─────────────────────────
+echo -e "${YELLOW}→${NC} ripgrep (可选 / optional)"
+if command -v rg &>/dev/null; then
+    if command -v brew &>/dev/null && brew list ripgrep &>/dev/null 2>&1; then
+        echo -e "  ripgrep 是本插件通过 brew 安装的依赖（6.4MB）。"
+        printf "  是否卸载 ripgrep？/ Uninstall ripgrep? [y/N]: "
+        read -r RG_ANSWER
+        if [ "$RG_ANSWER" = "y" ] || [ "$RG_ANSWER" = "Y" ]; then
+            brew uninstall ripgrep
+            echo -e "  ${GREEN}✓${NC} ripgrep 已卸载 / uninstalled"
+        else
+            echo -e "  ${YELLOW}  ${NC}保留 ripgrep / Kept ripgrep"
+        fi
+    else
+        echo -e "  ${YELLOW}⚠${NC} ripgrep 非本脚本安装，跳过 / not installed by this script, skipped"
+    fi
+else
+    echo -e "  ${YELLOW}⚠${NC} ripgrep 未安装 / not installed"
+fi
+echo ""
+
 echo -e "${GREEN}Uninstall complete.${NC}"
