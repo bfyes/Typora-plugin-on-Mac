@@ -28,7 +28,11 @@
         try { x.send(JSON.stringify({ method: method, params: params || [] })); }
         catch(e) { throw new Error("Bridge connection failed: " + (e.message || "unknown")); }
         // WKWebView may return status 0 for cross-origin from file://
-        if (x.status !== 200 && x.status !== 0) throw new Error("Bridge HTTP " + x.status);
+        if (x.status !== 200 && x.status !== 0) {
+            var errBody = {};
+            try { errBody = JSON.parse(x.responseText || "{}"); } catch(e2) {}
+            throw new Error(errBody.error || ("Bridge HTTP " + x.status));
+        }
         var r = JSON.parse(x.responseText || x.response || "{}");
         if (!r.ok) throw new Error(r.error || "Bridge error");
         return r.result;
@@ -46,6 +50,16 @@
         }).then(function(r) {
             if (!r.ok) throw new Error(r.error || "Bridge error");
             return r.result;
+        }).catch(function(e) {
+            // If it's a Response object (HTTP error), try to read the body
+            if (e && e.text && typeof e.text === "function") {
+                return e.text().then(function(t) {
+                    var errBody = {};
+                    try { errBody = JSON.parse(t); } catch(e2) {}
+                    throw new Error(errBody.error || e.statusText || "Bridge error");
+                });
+            }
+            throw e;
         });
     }
 

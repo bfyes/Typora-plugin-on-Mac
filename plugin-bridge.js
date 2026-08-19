@@ -84,7 +84,10 @@ function ok(res, result) {
 }
 
 function err(res, message, code) {
-    res.writeHead(code || 500, corsHeaders());
+    // Business errors (missing file, etc.) return 200 with ok:false
+    // so the loader can read the error message from the body
+    var httpCode = (code === 401 || code === 404) ? code : 200;
+    res.writeHead(httpCode, corsHeaders());
     res.end(JSON.stringify({ ok: false, error: message }));
 }
 
