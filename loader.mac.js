@@ -794,6 +794,11 @@ function _isPluginPath(fp) {
     // ════════════════════════════════════════════════════════
 
 window.addEventListener("load", function() {
+        // Move word count to bottom-left (like Windows)
+        var _footerFix = document.createElement("style");
+        _footerFix.textContent = "footer.ty-footer { justify-content: flex-start !important; padding-left: 30px !important; }";
+        document.head.appendChild(_footerFix);
+
         // Bridge connectivity check
         if (_ready) {
             try {
