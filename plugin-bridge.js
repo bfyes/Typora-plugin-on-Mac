@@ -134,20 +134,26 @@ var ROUTES = {
         return fs.existsSync(params[0]);
     },
     "fs.readdir": function (params) {
-        return fsp.readdir(params[0], params[1] || {});
+        var p = params[0];
+        if (!p) return Promise.reject(new Error("ENOENT: empty path"));
+        return fsp.readdir(p, params[1] || {});
     },
     "fs.readdirSync": function (params) {
         return fs.readdirSync(params[0], params[1] || {});
     },
     "fs.stat": function (params) {
-        return fsp.stat(params[0]).then(serializeStat);
+        var p = params[0];
+        if (!p) return Promise.reject(new Error("ENOENT: empty path"));
+        return fsp.stat(p).then(serializeStat);
     },
     "fs.statSync": function (params) {
         var s = fs.statSync(params[0]);
         return serializeStat(s);
     },
     "fs.lstat": function (params) {
-        return fsp.lstat(params[0]).then(serializeStat);
+        var p = params[0];
+        if (!p) return Promise.reject(new Error("ENOENT: empty path"));
+        return fsp.lstat(p).then(serializeStat);
     },
     "fs.lstatSync": function (params) {
         var s = fs.lstatSync(params[0]);
@@ -460,6 +466,12 @@ ROUTES["shell.openPath"] = function (params) {
     var filepath = params[0];
     cp.exec("open -R '" + filepath.replace(/'/g, "'\\''") + "'", function () {});
     return undefined;
+};
+
+ROUTES["debug.log"] = function (params) {
+    var msg = params[0] || "";
+    log("DEBUG", msg);
+    return { ok: true };
 };
 
 // ── Stats serializer (Stat objects don't JSON-serialize) ──
