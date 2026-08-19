@@ -798,15 +798,6 @@ function _isPluginPath(fp) {
     // ════════════════════════════════════════════════════════
 
 window.addEventListener("load", function() {
-        // Move word count and footer buttons to bottom-left (like Windows)
-        var _footerFix = document.createElement("style");
-        _footerFix.textContent = [
-            "footer.ty-footer { justify-content: flex-start !important; padding-left: 30px !important; }",
-            "footer.ty-footer > * { margin-left: 0 !important; margin-right: 12px !important; }",
-            "#footer-word-count-info, .footer-word-count, .ty-footer-word-count { order: 1 !important; }",
-        ].join("\n");
-        document.head.appendChild(_footerFix);
-
         // Bridge connectivity check
         if (_ready) {
             try {
