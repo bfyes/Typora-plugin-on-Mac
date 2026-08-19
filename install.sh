@@ -246,6 +246,88 @@ fi
 echo ""
 
 # ════════════════════════════════════════════════════════
+# 写入默认用户配置 / Write default user settings
+# ════════════════════════════════════════════════════════
+USER_CONFIG_DIR="$HOME/.config/typora_plugin"
+USER_CONFIG="$USER_CONFIG_DIR/settings.user.toml"
+
+if [ -f "$USER_CONFIG" ]; then
+    echo -e "  ${GREEN}✓${NC} 用户配置已存在 / User config exists"
+else
+    mkdir -p "$USER_CONFIG_DIR"
+    cat > "$USER_CONFIG" << 'CONFIGEOF'
+[pie_menu]
+ENABLE = true
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 4, 0 ]
+size = "16px"
+icon = "fa fa-gear"
+callback = "preferences.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 3, 0 ]
+size = "16px"
+icon = "fa fa-indent"
+callback = "md_padding.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 2, 0 ]
+size = "16px"
+icon = "fa fa-font"
+callback = "text_stylize.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 1, 0 ]
+size = "16px"
+icon = "fa fa-caret-up"
+evil = "() => this.utils.jumpToEdge(true)"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 0, 0 ]
+size = "16px"
+icon = "fa fa-caret-down"
+evil = "() => this.utils.jumpToEdge(false)"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 3, 1 ]
+size = "16px"
+icon = "fa fa-search"
+callback = "search_multi.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 2, 1 ]
+size = "16px"
+icon = "fa fa-th-list"
+callback = "right_outline.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 1, 1 ]
+size = "16px"
+icon = "fa fa-image"
+callback = "image_viewer.call"
+
+[[action_buttons.BUTTONS]]
+enable = true
+coordinate = [ 0, 1 ]
+size = "16px"
+icon = "fa fa-sitemap fa-rotate-270"
+callback = "markmap.onButtonClick"
+CONFIGEOF
+    echo -e "  ${GREEN}✓${NC} 已写入默认配置 / Default config written"
+    echo -e "      → $USER_CONFIG"
+fi
+echo ""
+
+# ════════════════════════════════════════════════════════
 # 验证 / Verify
 # ════════════════════════════════════════════════════════
 echo -e "${YELLOW}→${NC} 验证 / Verifying..."
