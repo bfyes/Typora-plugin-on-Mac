@@ -263,7 +263,7 @@ grep -qF "loader.mac.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader 
 # ════════════════════════════════════════════════════════
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  安装完成！/ Done! 🎉${NC}"
+echo -e "${GREEN}  安装完成！/ Done! ${NC}"
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
 echo ""
 echo "  打开 Typora，你应该看到："

@@ -50,16 +50,6 @@
         }).then(function(r) {
             if (!r.ok) throw new Error(r.error || "Bridge error");
             return r.result;
-        }).catch(function(e) {
-            // If it's a Response object (HTTP error), try to read the body
-            if (e && e.text && typeof e.text === "function") {
-                return e.text().then(function(t) {
-                    var errBody = {};
-                    try { errBody = JSON.parse(t); } catch(e2) {}
-                    throw new Error(errBody.error || e.statusText || "Bridge error");
-                });
-            }
-            throw e;
         });
     }
 
@@ -582,37 +572,18 @@ function _isPluginPath(fp) {
         if (id === "electron") {
             return {
                 shell: {
-                    openExternal: function(url) {
-                        callAsync("shell.openExternal", [url]).catch(function() {});
-                    },
-                    openPath: function(p) {
-                        callAsync("shell.openPath", [p]).catch(function() {});
-                    },
-                    showItemInFolder: function(p) {
-                        callAsync("shell.openPath", [p]).catch(function() {});
-                    },
+                    openExternal: function(url) { callAsync("shell.openExternal", [url]).catch(function() {}); },
+                    openPath: function(p) { callAsync("shell.openPath", [p]).catch(function() {}); },
+                    showItemInFolder: function(p) { callAsync("shell.openPath", [p]).catch(function() {}); },
+                    beep: function() {},
                 },
-                ipcRenderer: {
-                    on: function(channel, listener) { /* stub */ },
-                    send: function(channel, ...args) { /* stub */ },
-                    invoke: function(channel, ...args) { return Promise.resolve({ canceled: true, filePaths: [] }); },
-                    once: function(channel, listener) { /* stub */ },
-                    removeListener: function(channel, listener) { /* stub */ },
-                },
-                remote: {
-                    dialog: {
-                        showOpenDialog: function() { return Promise.resolve({ canceled: true, filePaths: [] }); },
-                        showSaveDialog: function() { return Promise.resolve({ canceled: true, filePath: "" }); },
-                    },
-                    BrowserWindow: {
-                        getAllWindows: function() { return []; },
-                        getFocusedWindow: function() { return null; },
-                    },
-                },
-                app: {
-                    getPath: function(name) { return call("os.homedir", []) + "/Library/Application Support/Typora"; },
-                    getVersion: function() { return "1.0.0"; },
-                },
+                ipcRenderer: { on: function() {}, send: function() {}, invoke: function() { return Promise.resolve({}); }, once: function() {}, removeListener: function() {} },
+                remote: { dialog: { showOpenDialog: function() { return Promise.resolve({ canceled: true }); }, showSaveDialog: function() { return Promise.resolve({ canceled: true }); } }, BrowserWindow: { getAllWindows: function() { return []; }, fromId: function() { return null; } } },
+                app: { getPath: function() { return "/tmp"; }, getVersion: function() { return "1.0.0"; }, getName: function() { return "Typora"; } },
+                clipboard: { readText: function() { return ""; }, writeText: function() {} },
+                nativeImage: { createFromPath: function() { return {}; } },
+                Menu: { buildFromTemplate: function() { return {}; }, setApplicationMenu: function() {} },
+                crashReporter: { start: function() {} },
             };
         }
 
