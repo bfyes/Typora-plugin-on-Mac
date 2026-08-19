@@ -49,27 +49,36 @@ fi
 echo -e "  ${GREEN}✓${NC} Typora 未运行 / not running"
 
 # 检查 App Management 保护 / Check App Management protection
+# com.apple.provenance 可能存在但用户仍有写入权限，先做写入测试
 if xattr "$TYPORA_APP" 2>/dev/null | grep -q "com.apple.provenance"; then
-    echo -e "  ${YELLOW}⚠${NC} 检测到 com.apple.provenance（App Management 保护）"
-    echo -e "  ${YELLOW}  ${NC}macOS 会阻止写入 app bundle，导致 "Operation not permitted""
-    echo ""
-    echo -e "  ${CYAN}是否自动移除该属性？（需要输入密码）/ Auto-fix now?${NC}"
-    echo -e "  ${CYAN}将执行 / Will run: sudo xattr -dr com.apple.provenance \"$TYPORA_APP\"${NC}"
-    echo ""
-    printf "  输入 y 继续，其他键跳过 / y to continue: "
-    read -r PROV_ANSWER
-    if [ "$PROV_ANSWER" = "y" ] || [ "$PROV_ANSWER" = "Y" ]; then
-        sudo xattr -dr com.apple.provenance "$TYPORA_APP"
-        if xattr "$TYPORA_APP" 2>/dev/null | grep -q "com.apple.provenance"; then
-            echo -e "  ${RED}✗ 移除失败 / Failed to remove${NC}"
+    # 尝试写入测试文件，能写说明无需处理 / Try writing to check actual permission
+    if touch "$TYPORA_APP/Contents/Resources/TypeMark/.prov_test" 2>/dev/null; then
+        rm -f "$TYPORA_APP/Contents/Resources/TypeMark/.prov_test" 2>/dev/null
+        echo -e "  ${GREEN}✓${NC} 有写入权限 / write access OK (provenance 存在但不影响)"
+    else
+        echo -e "  ${YELLOW}⚠${NC} com.apple.provenance 导致写入被拒 / write denied"
+        echo -e "  ${YELLOW}  ${NC}macOS 会阻止写入 app bundle，导致 "Operation not permitted""
+        echo ""
+        echo -e "  ${CYAN}是否自动移除该属性？（需要输入密码）/ Auto-fix now?${NC}"
+        echo -e "  ${CYAN}将执行 / Will run: sudo xattr -dr com.apple.provenance \"$TYPORA_APP\"${NC}"
+        echo ""
+        printf "  输入 y 继续，其他键跳过 / y to continue: "
+        read -r PROV_ANSWER
+        if [ "$PROV_ANSWER" = "y" ] || [ "$PROV_ANSWER" = "Y" ]; then
+            sudo xattr -dr com.apple.provenance "$TYPORA_APP"
+            if ! touch "$TYPORA_APP/Contents/Resources/TypeMark/.prov_test" 2>/dev/null; then
+                echo -e "  ${RED}✗ 仍无法写入 / Still cannot write${NC}"
+                echo -e "  ${YELLOW}  ${NC}请手动授权 / Grant permission manually:"
+                echo -e "  ${YELLOW}  ${NC}  系统设置 → 隐私与安全性 → 应用管理 → 授权终端"
+                exit 1
+            fi
+            rm -f "$TYPORA_APP/Contents/Resources/TypeMark/.prov_test" 2>/dev/null
+            echo -e "  ${GREEN}✓${NC} 已修复 / Fixed"
+        else
+            echo -e "  ${YELLOW}  ${NC}已跳过。请手动处理 / Skipped:"
+            echo -e "  ${YELLOW}  ${NC}  系统设置 → 隐私与安全性 → 应用管理 → 授权终端"
             exit 1
         fi
-        echo -e "  ${GREEN}✓${NC} 已移除 / Removed"
-    else
-        echo -e "  ${YELLOW}  ${NC}已跳过。请手动执行 / Skipped. Run manually:"
-        echo -e "  ${YELLOW}  ${NC}  sudo xattr -dr com.apple.provenance \"$TYPORA_APP\""
-        echo -e "  ${YELLOW}  ${NC}完成后重新运行: bash install.sh"
-        exit 1
     fi
 else
     echo -e "  ${GREEN}✓${NC} 无 provenance 保护 / no App Management lock"
@@ -89,6 +98,26 @@ if ! command -v node &>/dev/null; then
 fi
 NODE_VER=$(node --version 2>/dev/null)
 echo -e "  ${GREEN}✓${NC} Node.js $NODE_VER"
+
+# ripgrep（可选，用于全文搜索 / optional, for full-text search）
+if ! command -v rg &>/dev/null; then
+    echo -e "  ${YELLOW}⚠${NC} 未安装 ripgrep / ripgrep not found"
+    if command -v brew &>/dev/null; then
+        printf "  是否安装 ripgrep？/ Install ripgrep now? [y/N]: "
+        read -r RG_ANSWER
+        if [ "$RG_ANSWER" = "y" ] || [ "$RG_ANSWER" = "Y" ]; then
+            brew install ripgrep
+            echo -e "  ${GREEN}✓${NC} ripgrep 已安装 / installed"
+        else
+            echo -e "  ${YELLOW}  ${NC}跳过，ripgrep 搜索功能不可用 / Skipped, search disabled"
+            echo -e "  ${YELLOW}  ${NC}稍后可手动安装 / Install later: brew install ripgrep"
+        fi
+    else
+        echo -e "  ${YELLOW}  ${NC}无 Homebrew，稍后可手动安装 / No brew, install manually: brew install ripgrep"
+    fi
+else
+    echo -e "  ${GREEN}✓${NC} ripgrep $(rg --version 2>/dev/null | head -1 | awk '{print $2}')"
+fi
 
 for f in loader.mac.js plugin-bridge.js; do
     if [ ! -f "$SCRIPT_DIR/$f" ]; then
