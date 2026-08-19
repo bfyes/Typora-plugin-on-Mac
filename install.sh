@@ -91,13 +91,20 @@ fi
 echo -e "  ${GREEN}✓${NC} git"
 
 if ! command -v node &>/dev/null; then
-    echo -e "${RED}✗ 需要 Node.js。安装方法:${NC}"
-    echo "    brew install node"
-    echo "    或 https://nodejs.org"
-    exit 1
+    if command -v brew &>/dev/null; then
+        echo -e "  ${YELLOW}→${NC} 安装 Node.js / Installing Node.js..."
+        brew install node
+        echo -e "  ${GREEN}✓${NC} Node.js 已安装 / installed"
+    else
+        echo -e "${RED}✗ 需要 Node.js，但未找到 Homebrew / Node.js required, no Homebrew${NC}"
+        echo "    安装 Homebrew: https://brew.sh"
+        echo "    或手动安装 Node.js: https://nodejs.org"
+        exit 1
+    fi
+else
+    NODE_VER=$(node --version 2>/dev/null)
+    echo -e "  ${GREEN}✓${NC} Node.js $NODE_VER"
 fi
-NODE_VER=$(node --version 2>/dev/null)
-echo -e "  ${GREEN}✓${NC} Node.js $NODE_VER"
 
 # ripgrep（可选，用于全文搜索 / optional, for full-text search）
 if ! command -v rg &>/dev/null; then
