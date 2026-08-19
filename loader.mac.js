@@ -90,7 +90,55 @@
         },
         basename: function(x, e) { var b = x.split("/").pop(); return e && b.endsWith(e) ? b.slice(0,-e.length) : b; },
         extname: function(x) { var b = x.split("/").pop(), i = b.lastIndexOf("."); return i > 0 ? b.substring(i) : ""; },
-        resolve: function() { return _path.join.apply(null, arguments); },
+        resolve: function() {
+            var parts = [];
+            for (var i = 0; i < arguments.length; i++) {
+                var seg = String(arguments[i]); if (!seg) continue;
+                if (seg[0] === "/") parts = seg.split("/").filter(function(x) { return x; });
+                else seg.split("/").forEach(function(p) {
+                    if (!p || p === ".") return;
+                    if (p === "..") { if (parts.length > 0) parts.pop(); }
+                    else parts.push(p);
+                });
+            }
+            return "/" + parts.join("/");
+        },
+        normalize: function(x) {
+            var isAbs = x[0] === "/";
+            var parts = x.split("/"), out = [];
+            for (var i = 0; i < parts.length; i++) {
+                if (!parts[i] || parts[i] === ".") continue;
+                if (parts[i] === "..") { if (out.length > 0) out.pop(); continue; }
+                out.push(parts[i]);
+            }
+            return (isAbs ? "/" : "") + out.join("/") || ".";
+        },
+        relative: function(from, to) {
+            var fa = from.split("/").filter(function(x) { return x; });
+            var ta = to.split("/").filter(function(x) { return x; });
+            var i = 0;
+            while (i < fa.length && i < ta.length && fa[i] === ta[i]) i++;
+            var up = fa.length - i, rel = [];
+            for (var j = 0; j < up; j++) rel.push("..");
+            for (var j = i; j < ta.length; j++) rel.push(ta[j]);
+            return rel.join("/") || ".";
+        },
+        isAbsolute: function(x) { return x && x[0] === "/"; },
+        parse: function(x) {
+            var parts = x.split("/"), file = parts.pop() || "";
+            var ext = "", base = file;
+            var di = file.lastIndexOf(".");
+            if (di > 0) { ext = file.substring(di); base = file.substring(0, di); }
+            return { root: x[0] === "/" ? "/" : "", dir: parts.join("/") || (x[0] === "/" ? "/" : ""), base: file, name: base, ext: ext };
+        },
+        format: function(obj) {
+            var dir = obj.dir || obj.root || "";
+            var base = obj.name || "";
+            if (obj.ext && !base.endsWith(obj.ext)) base += obj.ext;
+            if (obj.base) base = obj.base;
+            return dir ? dir.replace(/\/$/, "") + "/" + base : base;
+        },
+        delimiter: "/",
         sep: "/"
     };
 
@@ -542,7 +590,25 @@ function _isPluginPath(fp) {
                             }));
                         });
                     };
-                }
+                },
+                isDeepStrictEqual: function(a, b) {
+                    if (a === b) return true;
+                    if (a == null || b == null || typeof a !== "object" || typeof b !== "object") return false;
+                    var ka = Object.keys(a), kb = Object.keys(b);
+                    if (ka.length !== kb.length) return false;
+                    for (var i = 0; i < ka.length; i++) {
+                        if (!this.isDeepStrictEqual(a[ka[i]], b[ka[i]])) return false;
+                    }
+                    return true;
+                },
+                inspect: function(obj) { return JSON.stringify(obj); },
+                inherits: function(ctor, superCtor) {
+                    ctor.super_ = superCtor;
+                    ctor.prototype = Object.create(superCtor.prototype, { constructor: { value: ctor, enumerable: false, writable: true, configurable: true } });
+                },
+                types: { isPromise: function(v) { return v && typeof v.then === "function"; } },
+                debuglog: function() { return function() {}; },
+                format: function() { return Array.prototype.join.call(arguments, " "); },
             };
         }
 
