@@ -48,6 +48,33 @@ if pgrep -q Typora; then
 fi
 echo -e "  ${GREEN}✓${NC} Typora 未运行 / not running"
 
+# 检查 App Management 保护 / Check App Management protection
+if xattr "$TYPORA_APP" 2>/dev/null | grep -q "com.apple.provenance"; then
+    echo -e "  ${YELLOW}⚠${NC} 检测到 com.apple.provenance（App Management 保护）"
+    echo -e "  ${YELLOW}  ${NC}macOS 会阻止写入 app bundle，导致 "Operation not permitted""
+    echo ""
+    echo -e "  ${CYAN}是否自动移除该属性？（需要输入密码）/ Auto-fix now?${NC}"
+    echo -e "  ${CYAN}将执行 / Will run: sudo xattr -dr com.apple.provenance \"$TYPORA_APP\"${NC}"
+    echo ""
+    printf "  输入 y 继续，其他键跳过 / y to continue: "
+    read -r PROV_ANSWER
+    if [ "$PROV_ANSWER" = "y" ] || [ "$PROV_ANSWER" = "Y" ]; then
+        sudo xattr -dr com.apple.provenance "$TYPORA_APP"
+        if xattr "$TYPORA_APP" 2>/dev/null | grep -q "com.apple.provenance"; then
+            echo -e "  ${RED}✗ 移除失败 / Failed to remove${NC}"
+            exit 1
+        fi
+        echo -e "  ${GREEN}✓${NC} 已移除 / Removed"
+    else
+        echo -e "  ${YELLOW}  ${NC}已跳过。请手动执行 / Skipped. Run manually:"
+        echo -e "  ${YELLOW}  ${NC}  sudo xattr -dr com.apple.provenance \"$TYPORA_APP\""
+        echo -e "  ${YELLOW}  ${NC}完成后重新运行: bash install.sh"
+        exit 1
+    fi
+else
+    echo -e "  ${GREEN}✓${NC} 无 provenance 保护 / no App Management lock"
+fi
+
 if ! command -v git &>/dev/null; then
     echo -e "${RED}✗ 需要 git。运行: xcode-select --install${NC}"
     exit 1
@@ -93,7 +120,16 @@ echo -e "${YELLOW}→${NC} 安装中 / Installing..."
 
 # 1. 复制插件文件 / Copy plugin
 rm -rf "$PLUGIN_DST"
-cp -r "$PLUGIN_CLONE/plugin" "$PLUGIN_DST"
+if ! cp -r "$PLUGIN_CLONE/plugin" "$PLUGIN_DST" 2>/tmp/typora_cp.err; then
+    echo -e "  ${RED}✗ 复制插件失败 / Failed to copy plugin${NC}"
+    cat /tmp/typora_cp.err
+    if grep -q "Operation not permitted" /tmp/typora_cp.err 2>/dev/null; then
+        echo -e "${YELLOW}→${NC} macOS App Management 保护阻止了写入。"
+        echo -e "  ${YELLOW}${NC}运行以下命令后重试 / Run then retry:"
+        echo -e "  ${YELLOW}${NC}  sudo xattr -dr com.apple.provenance \"$TYPORA_APP\""
+    fi
+    exit 1
+fi
 echo -e "  ${GREEN}✓${NC} 插件文件 / Plugin files ($(find "$PLUGIN_DST" -type f | wc -l | tr -d ' ') files)"
 
 # 2. 复制 adapter 和 bridge / Copy adapter and bridge

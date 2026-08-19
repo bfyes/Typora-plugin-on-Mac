@@ -53,6 +53,13 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 | 文字样式、自动编号 | — |
 | 暗色模式、只读模式等 | — |
 
+## 常见问题 / Troubleshooting
+
+- **"Operation not permitted"**：macOS App Management 保护阻止写入 app bundle。解决方法（二选一）：
+  - 运行 `sudo xattr -dr com.apple.provenance /Applications/Typora.app`（推荐）
+  - 系统设置 → 隐私与安全性 → 应用管理 → 授权终端
+- 安装脚本会自动检测此问题并给出提示。
+
 ## 已知限制 / Known Issues
 
 - **markdownlint 语法检查**：显示为空，暂不可用（Worker 中的库加载兼容性）
