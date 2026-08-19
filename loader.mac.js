@@ -820,6 +820,23 @@ window.addEventListener("load", function() {
             if (typeof core === "function") {
                 var p = core();
                 if (p && p.then) p.then(function() {
+                    // Hook search_multi: fallback to current file dir when no mount folder
+                    try {
+                        var _container = window.reqnode(PLUGIN + "global/core/serviceContainer");
+                        var _sm = _container.getPlugin("search_multi");
+                        if (_sm && _sm.search) {
+                            var _origSearch = _sm.search;
+                            _sm.search = function(rootPath, input) {
+                                if (!rootPath) {
+                                    rootPath = this.utils.getFilePath()
+                                        ? this.utils.getCurrentDirPath()
+                                        : this.utils.getMountFolder();
+                                }
+                                return _origSearch.call(this, rootPath, input);
+                            };
+                        }
+                    } catch(e) {}
+
                     // Re-fire code block events that may have been missed during loading
                     setTimeout(function() {
                         try {
