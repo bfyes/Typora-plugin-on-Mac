@@ -9,6 +9,16 @@
 
 ![screenshot2](https://github.com/bfyes/Typora-plugin-on-Mac/blob/main/README.assets/1Capture%202026-06-11%2012.11.09.png?raw=true)
 
+### 全文搜索 / Full-text Search
+
+![search](https://github.com/user-attachments/assets/4dc13c7a-bedd-468d-9323-8dc8019639d5)
+
+### 语法检查 / Markdown Lint
+
+![markdownlint](https://github.com/user-attachments/assets/5d105725-f3ce-408b-ae0c-5d6eaf4e6de9)
+
+> 支持中文界面，右下角设置图标中设置语言即可。
+
 ## 前置要求 / Prerequisites
 
 - macOS Typora
@@ -93,33 +103,33 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 | `calendar` | 日历组件 | ✅ |
 | `wavedrom` | 时序波形图 | ✅ |
 | `marp` | Marp 演示文稿 | ✅ |
+| `window_tab` | 标签页管理 | ✅ |
 
 ### ✅ 可用（通过 bridge 提供后端能力）
 
 | 插件 | 功能 | 说明 |
 |------|------|------|
-| `ripgrep` | 全文搜索 | 伪造 `vscode-ripgrep` 模块，探测系统 `rg`（需 `brew install ripgrep`） |
-| `search_multi` | 多元文件搜索 | bridge 提供 fs 遍历 + stat 序列化 |
-| `markdownlint` | Markdown 语法检查 | Worker polyfill 主线程执行，require fs/os 路由到 bridge |
-| `commander` | 命令行环境 | bridge 提供 child_process（spawn/exec/execSync） |
-| `updater` | 一键升级插件 | bridge 提供 fs 读写 |
+| `ripgrep` | 全文搜索 | 需 `brew install ripgrep` |
+| `search_multi` | 多元文件搜索 | bridge 提供 fs |
+| `markdownlint` | Markdown 语法检查 | 支持中文 |
+| `commander` | 命令行环境 | bridge 提供 child_process |
+| `updater` | 一键升级插件 | bridge 提供 fs |
 | `right_click_menu` | 右键菜单 | 功能有限 |
-| `datatables` | 表格增强（搜索、排序、分页） | 纯前端 jQuery 插件 |
+| `datatables` | 表格增强 | 纯前端 |
+| `pie_menu` | 圆盘菜单（Ctrl+右键） | 默认关闭 |
 
 ### ❌ 不可用 / 受限
 
 | 插件 | 功能 | 原因 |
 |------|------|------|
-| `window_tab` | 标签页管理 | 依赖 Electron 窗口管理 API，WKWebView 无此能力 |
-| `html_editor` | HTML 编辑器 | 依赖 `crypto.randomBytes`，stub 不完整 |
-| `remote_control` | Typora 自动化 | 依赖 Electron IPC |
-| `export_enhance` | 导出增强 | 依赖 Electron 导出流程 |
-| `article_uploader` | 博客上传 | 依赖 Node 网络模块 |
-| `cipher` | 文件加密 | 依赖 `crypto.randomBytes` |
-| `plantUML` | PlantUML 图表 | 需启动 Java 服务端 |
-| `mouse_gestures` | 鼠标手势 | WKWebView 事件限制 |
-| `pie_menu` | 圆盘菜单 | 兼容性问题 |
-| `chat` | 聊天组件 | 兼容性问题 |
+| `html_editor` | HTML 编辑器 | `crypto` 不完整 |
+| `remote_control` | Typora 自动化 | Electron IPC |
+| `export_enhance` | 导出增强 | Electron 导出 |
+| `article_uploader` | 博客上传 | Node 网络模块 |
+| `cipher` | 文件加密 | `crypto` 不完整 |
+| `plantUML` | PlantUML 图表 | 需 Java |
+| `mouse_gestures` | 鼠标手势 | WKWebView 限制 |
+| `chat` | 聊天组件 | 兼容性 |
 | `bookmark` | 书签管理器 | 受限 |
 | `cursor_history` | 光标跳转 | 受限 |
 

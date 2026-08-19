@@ -69,7 +69,7 @@ echo ""
 echo -e "${YELLOW}→${NC} ripgrep (可选 / optional)"
 if command -v rg &>/dev/null; then
     if command -v brew &>/dev/null && brew list ripgrep &>/dev/null 2>&1; then
-        echo -e "  ripgrep 是本插件通过 brew 安装的依赖（6.4MB）。"
+        echo -e "  ripgrep 是本插件通过 brew 安装的依赖（约 6MB）。"
         printf "  是否卸载 ripgrep？/ Uninstall ripgrep? [y/N]: "
         read -r RG_ANSWER
         if [ "$RG_ANSWER" = "y" ] || [ "$RG_ANSWER" = "Y" ]; then
