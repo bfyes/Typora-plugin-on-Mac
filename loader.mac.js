@@ -260,7 +260,11 @@
         function check(payload) {
             if (!LIB || !LIB.lint) return;
             try {
-                return LIB.lint({ strings: { content: payload.content }, config: RULE_CONFIG, customRules: CUSTOM_RULES });
+                var result = LIB.lint({ strings: { content: payload.content }, config: RULE_CONFIG, customRules: CUSTOM_RULES });
+                if (result && result.then) {
+                    return result.then(function(r) { return r ? r.content : r; });
+                }
+                return result ? result.content : result;
             } catch(e) {}
         }
         
