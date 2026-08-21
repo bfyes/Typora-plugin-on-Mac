@@ -1,7 +1,7 @@
 // ============================================================
 // obgnail/typora_plugin macOS 适配器 / Adapter v2
 // 通过 <script defer> 注入 index.html
-// Requires: Node.js bridge (plugin-bridge.js) on localhost:45678
+// Requires: Node.js bridge (bridge.js) on localhost:45678
 // Provides: reqnode (CommonJS), path, fs, os, process, Buffer
 // ============================================================
 (function() {
@@ -18,9 +18,13 @@
     var BRIDGE = "http://127.0.0.1:45678";
     var _token = "%%BRIDGE_TOKEN%%";
     var _ready = _token && _token.indexOf("%%") < 0;
+    // Keep the browser fetch for localhost bridge RPC. External plugin
+    // resources are routed through Node so file:// WKWebView pages avoid CORS.
+    var _nativeFetch = window.fetch && window.fetch.bind(window);
+
 
     function call(method, params) {
-        if (!_ready || !_token) throw new Error("Bridge not available — start plugin-bridge.js first");
+        if (!_ready || !_token) throw new Error("Bridge not available — start bridge.js first");
         var x = new XMLHttpRequest();
         x.open("POST", BRIDGE + "/api", false);
         x.setRequestHeader("Content-Type", "application/json");
@@ -40,7 +44,7 @@
 
     function callAsync(method, params) {
         if (!_ready || !_token) return Promise.reject(new Error("Bridge not available"));
-        return fetch(BRIDGE + "/api", {
+        return _nativeFetch(BRIDGE + "/api", {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Bridge-Token": _token },
             body: JSON.stringify({ method: method, params: params || [] })
@@ -52,6 +56,88 @@
             return r.result;
         });
     }
+
+    // Network adapter used by the bundled plugin utilities. It deliberately
+    // exposes the small Fetch Response surface PlantUML needs while Node.js
+    // performs the actual request in the bridge process.
+    function _bridgeFetch(url, options) {
+        options = options || {};
+        var body = options.body;
+        if (body && typeof body !== "string") {
+            if (body._chunks) body = body._chunks.map(function(c) { return c && c.toString ? c.toString("utf8") : String(c); }).join("");
+            else body = String(body);
+        }
+        var safeOptions = { method: options.method || "GET", headers: options.headers || {}, body: body || undefined, redirect: options.redirect };
+        return callAsync("fetch", [{ url: url, options: safeOptions, timeout: options.timeout || 0 }]).then(function(result) {
+            var binary = atob(result.body || ""), bytes = new Uint8Array(binary.length), i;
+            for (i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            var responseHeaders = {
+                get: function(name) { return result.headers[String(name).toLowerCase()] || null; }
+            };
+            return {
+                ok: result.ok, status: result.status, statusText: result.statusText,
+                url: url,
+                headers: responseHeaders,
+                arrayBuffer: function() { return Promise.resolve(bytes.buffer); },
+                text: function() { return Promise.resolve(_decodeText(bytes)); },
+                json: function() { return this.text().then(function(text) { return JSON.parse(text); }); },
+                clone: function() { return this; },
+            };
+        });
+    }
+
+    if (_nativeFetch) {
+        var _macFetch = function(url, options) {
+            var target = String(url && url.url || url);
+            if (/^https?:\/\//i.test(target) && target.indexOf(BRIDGE) !== 0) {
+                return _bridgeFetch(target, options);
+            }
+            return _nativeFetch(url, options);
+        };
+        try { Object.defineProperty(window, "fetch", { value: _macFetch, writable: true, configurable: true }); } catch(e) { window.fetch = _macFetch; }
+        if (typeof globalThis !== "undefined") {
+            try { Object.defineProperty(globalThis, "fetch", { value: _macFetch, writable: true, configurable: true }); } catch(e) { globalThis.fetch = _macFetch; }
+        }
+
+        // Markmap loads d3/markmap-view by appending remote <script> tags.
+        // WKWebView pages loaded from file:// cannot reliably load those tags,
+        // so fetch the source through the bridge and execute it in-page.
+        var _head = document.head;
+            var _appendTarget = (window.Element && Element.prototype.append) ? Element.prototype : _head;
+            if (_appendTarget && !_appendTarget.__macNetworkAppend) {
+            var _append = _appendTarget.append;
+            var _networkAppend = function() {
+                var target = this;
+                var nodes = Array.prototype.slice.call(arguments);
+                nodes.forEach(function(node) {
+                    var src = node && node.tagName === "SCRIPT" && node.src;
+                    if (!src || !/^https?:\/\//i.test(src) || src.indexOf(BRIDGE) === 0) {
+                        _append.call(target, node);
+                        return;
+                    }
+                    _bridgeFetch(src).then(function(resp) {
+                        if (!resp.ok) throw new Error("HTTP " + resp.status + " loading " + src);
+                        return resp.text();
+                    }).then(function(source) {
+                        new Function(source + "\n//# sourceURL=" + src)();
+                        if (typeof node.onload === "function") node.onload();
+                    }).catch(function(error) {
+                        if (typeof node.onerror === "function") node.onerror(error);
+                        console.error("[loader] external script failed", src, error);
+                    });
+                });
+            };
+            _appendTarget.append = _networkAppend;
+            _appendTarget.__macNetworkAppend = true;
+        }
+    }
+
+    // WKWebView gives flex children an intrinsic SVG height, which can push
+    // the Markmap drawing below the visible panel. Constrain the drawing to
+    // the panel's actual box while preserving the upstream layout.
+    var _markmapStyle = document.createElement("style");
+    _markmapStyle.textContent = "#plugin-markmap{box-sizing:border-box;overflow:hidden;}#plugin-markmap-svg{display:block;min-width:0;min-height:0;width:100%;height:100%;overflow:hidden;}#plugin-markmap .plugin-markmap-header{flex:0 0 auto;}#write .md-diagram-panel{box-sizing:border-box;max-width:100%;width:100%;overflow-x:hidden;}#write .md-diagram-panel svg,#write .md-diagram-panel canvas{box-sizing:border-box;max-width:100%!important;width:100%;height:auto;}";
+    (document.head || document.documentElement).appendChild(_markmapStyle);
 
     // ════════════════════════════════════════════════════════
     // path polyfill (pure JS, always works)
@@ -505,12 +591,57 @@ function _isPluginPath(fp) {
         exit: function() {}, nextTick: function(f) { setTimeout(f, 0); },
         on: function() {}
     };
+    // A small browser-side Buffer compatibility layer.  PlantUML only needs
+    // `from`, `concat`, `length`, and `toString`; keeping those semantics here
+    // is safer than pretending every Buffer is a plain string.
+    var _encodeText = typeof TextEncoder !== "undefined"
+        ? function(text) { return new TextEncoder().encode(text); }
+        : function(text) { var out = [], i; for (i = 0; i < text.length; i++) out.push(text.charCodeAt(i) & 255); return new Uint8Array(out); };
+    var _decodeText = typeof TextDecoder !== "undefined"
+        ? function(bytes) { return new TextDecoder().decode(bytes); }
+        : function(bytes) { var out = "", i; for (i = 0; i < bytes.length; i++) out += String.fromCharCode(bytes[i]); return out; };
+    function MacBuffer(value, encoding) {
+        if (value instanceof MacBuffer) return value;
+        if (typeof value === "string") {
+            this._text = value;
+            this._bytes = _encodeText(value);
+        } else if (value instanceof ArrayBuffer) {
+            this._bytes = new Uint8Array(value);
+            this._text = _decodeText(this._bytes);
+        } else if (value && value.buffer instanceof ArrayBuffer) {
+            this._bytes = new Uint8Array(value.buffer, value.byteOffset || 0, value.byteLength);
+            this._text = _decodeText(this._bytes);
+        } else if (Array.isArray(value)) {
+            this._bytes = new Uint8Array(value);
+            this._text = _decodeText(this._bytes);
+        } else {
+            this._text = value == null ? "" : String(value);
+            this._bytes = _encodeText(this._text);
+        }
+        this.length = this._bytes.length;
+    }
+    MacBuffer.prototype.toString = function(encoding) {
+        if (encoding === "base64") {
+            var binary = "";
+            for (var i = 0; i < this._bytes.length; i++) binary += String.fromCharCode(this._bytes[i]);
+            return btoa(binary);
+        }
+        return encoding === "hex"
+            ? Array.prototype.map.call(this._bytes, function(b) { return (b < 16 ? "0" : "") + b.toString(16); }).join("")
+            : this._text;
+    };
+    MacBuffer.prototype.valueOf = function() { return this._text; };
     window.Buffer = {
-        from: function(s, enc) { return typeof s === "string" ? s : String(s); },
-        alloc: function(n) { return new Array(n); },
-        concat: function(arrs) { return arrs.join(""); },
-        isBuffer: function() { return false; },
-        byteLength: function(s) { return String(s).length; }
+        from: function(value, enc) { return new MacBuffer(value, enc); },
+        alloc: function(n) { return new MacBuffer(new Uint8Array(n)); },
+        concat: function(arrs) {
+            var bytes = [], i, j;
+            for (i = 0; i < arrs.length; i++) for (j = 0; j < arrs[i].length; j++) bytes.push(arrs[i]._bytes ? arrs[i]._bytes[j] : arrs[i][j]);
+            return new MacBuffer(bytes);
+        },
+        isBuffer: function(value) { return value instanceof MacBuffer; },
+        byteLength: function(value) { return new MacBuffer(value).length;
+        }
     };
     window.setImmediate = function(f) { setTimeout(f, 0); };
     window.clearImmediate = function() {};
@@ -520,6 +651,9 @@ function _isPluginPath(fp) {
     // reqnode — module loader (bridge-backed)
     // ════════════════════════════════════════════════════════
     window.reqnode = function(id) {
+        // Replace the heavyweight bundled node-fetch transport with one RPC
+        // call. The plugin API and Response shape remain unchanged.
+        if (String(id).indexOf("node-fetch-commonjs") >= 0) return _bridgeFetch;
         if (id === "path") return _path;
         if (id === "fs" || id === "fs-extra") return _fs;
 
@@ -613,6 +747,7 @@ function _isPluginPath(fp) {
                 types: { isPromise: function(v) { return v && typeof v.then === "function"; } },
                 debuglog: function() { return function() {}; },
                 format: function() { return Array.prototype.join.call(arguments, " "); },
+                deprecate: function(fn) { return fn; },
             };
         }
 
@@ -657,9 +792,65 @@ function _isPluginPath(fp) {
             };
         }
 
-        // ── http (RPC server via bridge) ──
-        if (id === "http") {
+        // ── http/https ──
+        // The bundled node-fetch expects Node's ClientRequest interface. The
+        // old no-op stub made every utils.fetch() silently fail, including
+        // PlantUML. Adapt that small interface to WKWebView XMLHttpRequest.
+        if (id === "http" || id === "https") {
+            function browserRequest(input, options, callback) {
+                options = options || {};
+                var listeners = {}, requestHeaders = {}, chunks = [], ended = false;
+                var target = typeof input === "string" ? input : (input && input.href) || options.href || "";
+                var method = options.method || "GET";
+                function emit(event) {
+                    var args = Array.prototype.slice.call(arguments, 1);
+                    (listeners[event] || []).slice().forEach(function(fn) { fn.apply(null, args); });
+                }
+                var req = {
+                    on: function(event, fn) { (listeners[event] || (listeners[event] = [])).push(fn); return this; },
+                    once: function(event, fn) { return this.on(event, fn); },
+                    setHeader: function(name, value) { requestHeaders[name] = value; },
+                    removeHeader: function(name) { delete requestHeaders[name]; },
+                    write: function(chunk) { chunks.push(chunk); return true; },
+                    end: function(chunk) {
+                        if (ended) return this;
+                        ended = true; if (chunk != null) chunks.push(chunk);
+                        var xhr = new XMLHttpRequest();
+                        xhr.open(method, target, true);
+                        Object.keys(requestHeaders).forEach(function(name) { try { xhr.setRequestHeader(name, requestHeaders[name]); } catch (_) {} });
+                        xhr.responseType = "arraybuffer";
+                        xhr.onload = function() {
+                            var bytes = xhr.response || new ArrayBuffer(0);
+                            var responseListeners = {};
+                            var response = {
+                                statusCode: xhr.status,
+                                headers: { get: function(name) { return xhr.getResponseHeader(name); } },
+                                on: function(event, fn) { (responseListeners[event] || (responseListeners[event] = [])).push(fn); return this; },
+                                once: function(event, fn) { return this.on(event, fn); },
+                                resume: function() { return this; },
+                            };
+                            if (callback) callback(response);
+                            var chunk = window.Buffer.from(bytes);
+                            (responseListeners.data || []).forEach(function(fn) { fn(chunk); });
+                            (responseListeners.end || []).forEach(function(fn) { fn(); });
+                        };
+                        xhr.onerror = function() { emit("error", new Error("Network request failed: " + target)); };
+                        xhr.ontimeout = function() { emit("error", new Error("Network request timed out: " + target)); };
+                        var body = chunks.map(function(c) { return c && c.toString ? c.toString("utf8") : String(c); }).join("");
+                        xhr.send(body || null);
+                        return this;
+                    },
+                    abort: function() { emit("error", new Error("Request aborted")); },
+                };
+                return req;
+            }
             return {
+                request: browserRequest,
+                get: function(input, options, callback) {
+                    if (typeof options === "function") { callback = options; options = {}; }
+                    options = options || {}; options.method = "GET";
+                    var req = browserRequest(input, options, callback); req.end(); return req;
+                },
                 createServer: function(handler) {
                     var serverName = "rc_" + Date.now();
                     var port;
@@ -696,14 +887,6 @@ function _isPluginPath(fp) {
                         close: function(cb) { polling = false; if (pollInterval) clearInterval(pollInterval); if (cb) cb(); }
                     };
                 },
-                request: function() { return { on: function(){}, end: function(){} }; },
-                get: function() { return { on: function(){}, end: function(){} }; },
-            };
-        }
-        if (id === "https") {
-            return {
-                request: function() { return { on: function(){}, end: function(){} }; },
-                get: function() { return { on: function(){}, end: function(){} }; },
             };
         }
 
@@ -714,13 +897,87 @@ function _isPluginPath(fp) {
             parse: function(u) {
                 try { var a = document.createElement("a"); a.href = u; return { protocol: a.protocol, host: a.host, hostname: a.hostname, port: a.port, pathname: a.pathname, search: a.search, hash: a.hash, href: a.href }; }
                 catch(e) { return {}; }
-            }
+            },
+            fileURLToPath: function(u) {
+                var value = String(u || "");
+                return value.indexOf("file://") === 0 ? decodeURIComponent(value.slice(7)) : value;
+            },
+            pathToFileURL: function(p) { return { href: "file://" + encodeURI(String(p || "")) }; }
         };
         if (id === "querystring") return {
             parse: function(s) { var o = {}; if (!s) return o; s.split("&").forEach(function(p) { var kv = p.split("="); o[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || ""); }); return o; },
             stringify: function(o) { return Object.keys(o).map(function(k) { return encodeURIComponent(k) + "=" + encodeURIComponent(o[k]); }).join("&"); }
         };
-        if (id === "stream") return { Transform: function() { return { on: function(){}, pipe: function(){}, write: function(){}, end: function(){} }; } };
+        // PlantUML's POST renderer uses Readable.from([Buffer.from(text)]).
+        // Implement the small readable contract used by node-fetch instead of
+        // returning a no-op object (which silently drops the request body).
+        if (id === "stream") {
+            function Readable(options) {
+                this._listeners = {};
+                this._chunks = [];
+                this.readable = true;
+                if (options && typeof options.read === "function") this._read = options.read;
+            }
+            Readable.prototype.on = function(event, fn) {
+                (this._listeners[event] || (this._listeners[event] = [])).push(fn);
+                return this;
+            };
+            Readable.prototype.once = function(event, fn) {
+                var self = this;
+                function once() { self.removeListener(event, once); fn.apply(self, arguments); }
+                return this.on(event, once);
+            };
+            Readable.prototype.removeListener = function(event, fn) {
+                var list = this._listeners[event] || [], i = list.indexOf(fn);
+                if (i >= 0) list.splice(i, 1);
+                return this;
+            };
+            Readable.prototype.emit = function(event) {
+                var args = Array.prototype.slice.call(arguments, 1), list = this._listeners[event] || [];
+                list.slice().forEach(function(fn) { fn.apply(this, args); }, this);
+                return list.length > 0;
+            };
+            Readable.prototype.push = function(chunk) {
+                if (chunk === null) { this.emit("end"); return false; }
+                this._chunks.push(chunk); this.emit("data", chunk); return true;
+            };
+            Readable.prototype.pipe = function(destination) {
+                this.on("data", function(chunk) { destination.write(chunk); });
+                this.on("end", function() { if (destination.end) destination.end(); });
+                return destination;
+            };
+            Readable.prototype.resume = function() { return this; };
+            Readable.prototype.read = function() { return this._chunks.length ? this._chunks.shift() : null; };
+            if (typeof Symbol !== "undefined") {
+                Readable.prototype[Symbol.iterator] = function() {
+                    var chunks = this._chunks.slice(), index = 0;
+                    return { next: function() { return index < chunks.length ? { value: chunks[index++], done: false } : { done: true }; } };
+                };
+                Readable.prototype[Symbol.asyncIterator] = function() {
+                    var self = this;
+                    return { next: function() { return Promise.resolve({ value: self.read(), done: self._chunks.length === 0 }); } };
+                };
+            }
+            Readable.from = function(iterable) {
+                var stream = new Readable();
+                // Keep the source synchronously available for transports that
+                // serialize a request body immediately (our Node bridge does).
+                stream._chunks = Array.prototype.slice.call(iterable);
+                setTimeout(function() {
+                    try {
+                        stream._chunks.slice().forEach(function(chunk) { stream.emit("data", chunk); });
+                        stream.emit("end");
+                    } catch (e) { stream.emit("error", e); }
+                }, 0);
+                return stream;
+            };
+            function Transform() { Readable.call(this); }
+            Transform.prototype = Object.create(Readable.prototype);
+            Transform.prototype.constructor = Transform;
+            Transform.prototype.write = function(chunk) { this.push(chunk); return true; };
+            Transform.prototype.end = function(chunk) { if (chunk) this.write(chunk); this.push(null); };
+            return { Readable: Readable, Transform: Transform, PassThrough: Transform };
+        }
         if (["events","buffer","assert","string_decoder","tty","worker_threads","supports-color"].indexOf(id) >= 0) return {};
 
         // ── vscode-ripgrep stub: return system rg path ──
@@ -780,7 +1037,10 @@ function _isPluginPath(fp) {
             try {
                 fn2(mod, mod.exports, __req, window.reqnode, __d, resolved, window, console, window.process, window.Buffer, setTimeout, setInterval);
             } catch(ex2) {
-                throw new Error("Module '" + shortName + "' failed: " + ex2.message);
+                var firstMessage = ex && (ex.stack || ex.message) || String(ex);
+                var secondMessage = ex2 && (ex2.stack || ex2.message) || String(ex2);
+                console.error("[loader] module failed", shortName, firstMessage, secondMessage);
+                throw new Error("Module '" + shortName + "' failed: " + secondMessage + " (initial: " + firstMessage + ")");
             }
         }
         _modCache[resolved] = mod.exports;

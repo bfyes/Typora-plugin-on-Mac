@@ -4,7 +4,7 @@
 // 为 WKWebView 沙箱提供真实的 Node.js API
 // Provides real Node.js APIs to the WKWebView sandbox.
 //
-// Usage: node plugin-bridge.js [--port PORT] [--token TOKEN]
+// Usage: node bridge.js [--port PORT] [--token TOKEN]
 // ============================================================
 "use strict";
 
@@ -16,6 +16,7 @@ const os = require("os");
 const cp = require("child_process");
 const zlib = require("zlib");
 const crypto = require("crypto");
+const { createFetchHandler } = require("./network");
 
 // ── Enrich PATH for launchd context (homebrew, etc.) ────────
 // launchd starts with minimal PATH, so homebrew binaries are missing
@@ -327,6 +328,9 @@ var ROUTES = {
         var input = Buffer.from(params[0], "base64");
         return zlib.inflateSync(input).toString("utf8");
     },
+
+    // ── network fetch ──
+    "fetch": createFetchHandler(globalThis.fetch, log),
 
     // ── crypto ──
     "crypto.randomUUID": function () { return crypto.randomUUID(); },

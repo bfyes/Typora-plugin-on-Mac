@@ -21,7 +21,7 @@ echo ""
 echo -e "${YELLOW}→${NC} 停止 Bridge / Stopping bridge..."
 
 # Kill any running bridge process
-pkill -f "plugin-bridge.js" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Bridge process killed" || echo -e "  ${YELLOW}⚠${NC} No bridge process found"
+pkill -f "bridge.js" 2>/dev/null && echo -e "  ${GREEN}✓${NC} Bridge process killed" || echo -e "  ${YELLOW}⚠${NC} No bridge process found"
 
 # Unload and remove launchd plist
 if [ -f "$LAUNCHD_PLIST" ]; then
@@ -51,9 +51,9 @@ echo -e "${YELLOW}→${NC} 恢复 index.html / Restoring index.html..."
 if [ -f "$INDEX_HTML.orig" ]; then
     cp "$INDEX_HTML.orig" "$INDEX_HTML"
     echo -e "  ${GREEN}✓${NC} index.html restored from backup"
-elif grep -qF "loader.mac.js" "$INDEX_HTML"; then
-    sed -i '' '/loader.mac.js/d' "$INDEX_HTML"
-    echo -e "  ${GREEN}✓${NC} loader.mac.js removed from index.html"
+elif grep -qF "loader.js" "$INDEX_HTML"; then
+    sed -i '' '/loader.js/d' "$INDEX_HTML"
+    echo -e "  ${GREEN}✓${NC} loader.js removed from index.html"
 else
     echo -e "  ${YELLOW}⚠${NC} No loader found in index.html"
 fi

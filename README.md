@@ -3,7 +3,7 @@
 > 在 macOS Typora 上运行 [obgnail/typora_plugin](https://github.com/obgnail/typora_plugin)。
 >
 > ⚠️ **本项目是 Windows/Linux 插件的非官方 macOS 移植。**
-> macOS 版 Typora 使用 **WKWebView**（非 Electron），没有 Node.js 运行时，大量插件功能受限。本项目通过本地 Node.js bridge + 一系列 hack 尽力恢复能力，但仍有部分功能不可用。
+> 部分功能不可用。
 
 ![screenshot1](https://github.com/bfyes/Typora-plugin-on-Mac/blob/main/README.assets/1Capture%202026-06-11%2012.11.05.png?raw=true)
 
@@ -38,15 +38,36 @@ bash install.sh
 
 ## 原理 / How it works
 
+开发记录见 [`LOG.md`](./LOG.md)。
+
 macOS 版 Typora 使用 **WKWebView**（不是 Electron），没有 Node.js 运行时。本项目通过两层提供插件运行环境：
 
 | 组件 | 说明 |
 |------|------|
-| `loader.mac.js` | WKWebView 内适配器，提供 CommonJS 模块加载 + HTTP 调用 bridge |
-| `plugin-bridge.js` | 本地 Node.js HTTP 服务（端口 45678），提供真实 fs/child_process/os/zlib |
+| `loader.js` | WKWebView 适配器、模块加载与少量 Node polyfill |
+| `bridge.js` | 本地 Node.js RPC 路由与认证 |
+| `network.js` | Node 原生 fetch 与二进制响应适配 |
 
 ```
-Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
+Typora WKWebView ←→ loader.js ←HTTP→ bridge.js (Node.js)
+```
+
+### 插件来源 / Plugin source
+
+安装器使用作者仓库的源码：
+
+```text
+https://github.com/obgnail/typora_plugin.git (master, shallow clone)
+    → /tmp/typora_plugin/plugin
+    → /Applications/Typora.app/Contents/Resources/TypeMark/plugin
+```
+
+安装时会把当前 commit 记录到 `~/.config/typora_plugin/install-info.txt`。作者插件本身不会被改写；macOS 适配代码只额外安装 `loader.js`、`bridge.js` 和 `network.js`。右键菜单保留 Typora 经 macOS 原生桥接创建的 `NSMenu`；Typora 没有公开 API 可向它注册任意插件的子菜单或回调。
+
+默认跟踪 `master`；需要固定到某个分支或 tag 时可在安装前指定：
+
+```bash
+PLUGIN_REF=v1.0.0 bash install.sh
 ```
 
 ### 适配 Hack / Adaptation Hacks
@@ -95,14 +116,14 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 | `sidebar_enhance` | 侧边栏增强 | ✅ |
 | `preferences` | 插件配置面板 | ✅ |
 | `command_palette` | 命令面板 | ✅ |
-| `markmap` | 思维导图 | ✅ |
+| `markmap` | 思维导图 | 已放弃（远程资源在 WKWebView 中不稳定） |
 | `echarts` | Echarts 图表 | ✅ |
 | `chart` | Chart.js 图表 | ✅ |
 | `drawIO` | DrawIO 图表 | ✅ |
 | `abc` | 乐谱（abc.js） | ✅ |
 | `calendar` | 日历组件 | ✅ |
 | `wavedrom` | 时序波形图 | ✅ |
-| `marp` | Marp 演示文稿 | ✅ |
+| `marp` | Marp 演示文稿 | 受 WKWebView 兼容性影响，当前版本可能失败 |
 | `window_tab` | 标签页管理 | ✅ |
 
 ### ✅ 可用（通过 bridge 提供后端能力）
@@ -114,7 +135,8 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 | `markdownlint` | Markdown 语法检查 | 支持中文 |
 | `commander` | 命令行环境 | bridge 提供 child_process |
 | `updater` | 一键升级插件 | bridge 提供 fs |
-| `right_click_menu` | 右键菜单 | 功能有限 |
+| `plantUML` | PlantUML 图表 | 默认使用在线渲染服务；支持 GET/POST 自动降级 |
+| `right_click_menu` | 插件右键菜单 | 不支持：Typora 原生菜单 API 只接受内置动作 ID，不能注册作者的动态菜单项与回调 |
 | `datatables` | 表格增强 | 纯前端 |
 | `pie_menu` | 圆盘菜单（Ctrl+右键） | 默认关闭 |
 
@@ -127,7 +149,6 @@ Typora WKWebView ←→ loader.mac.js ←HTTP→ plugin-bridge.js (Node.js)
 | `export_enhance` | 导出增强 | Electron 导出 |
 | `article_uploader` | 博客上传 | Node 网络模块 |
 | `cipher` | 文件加密 | `crypto` 不完整 |
-| `plantUML` | PlantUML 图表 | 需 Java |
 | `mouse_gestures` | 鼠标手势 | WKWebView 限制 |
 | `chat` | 聊天组件 | 兼容性 |
 | `bookmark` | 书签管理器 | 受限 |

@@ -16,6 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # 官方插件仓库 / Official plugin repo
 PLUGIN_REPO="https://github.com/obgnail/typora_plugin.git"
 PLUGIN_CLONE="/tmp/typora_plugin"
+PLUGIN_REF="${PLUGIN_REF:-master}"
 
 # Bridge settings
 BRIDGE_PORT="${BRIDGE_PORT:-45678}"
@@ -41,6 +42,11 @@ if [ ! -d "$TYPORA_APP" ]; then
     exit 1
 fi
 echo -e "  ${GREEN}✓${NC} Typora.app"
+
+if [ ! -f "$INDEX_HTML" ]; then
+    echo -e "${RED}✗ 找不到 Typora 主页面 / Not found: $INDEX_HTML${NC}"
+    exit 1
+fi
 
 if pgrep -q Typora; then
     echo -e "${RED}✗ Typora 正在运行，请先退出（Cmd+Q）/ Quit Typora first.${NC}"
@@ -126,7 +132,7 @@ else
     echo -e "  ${GREEN}✓${NC} ripgrep $(rg --version 2>/dev/null | head -1 | awk '{print $2}')"
 fi
 
-for f in loader.mac.js plugin-bridge.js; do
+for f in loader.js bridge.js network.js; do
     if [ ! -f "$SCRIPT_DIR/$f" ]; then
         echo -e "${RED}✗ 找不到 $f / Not found${NC}"
         exit 1
@@ -141,18 +147,35 @@ echo ""
 echo -e "${YELLOW}→${NC} 拉取 obgnail/typora_plugin ..."
 if [ -d "$PLUGIN_CLONE/.git" ]; then
     echo "  已存在，更新中 / Updating..."
-    git -C "$PLUGIN_CLONE" pull --depth 1 origin master 2>/dev/null || true
+    if ! git -C "$PLUGIN_CLONE" fetch --depth 1 origin "$PLUGIN_REF" >/tmp/typora_plugin_fetch.err 2>&1 \
+        || ! git -C "$PLUGIN_CLONE" checkout --detach FETCH_HEAD >/tmp/typora_plugin_checkout.err 2>&1; then
+        echo -e "${YELLOW}⚠ 无法联网更新作者源码，继续使用已有 clone / Network update failed; using existing clone${NC}"
+        cat /tmp/typora_plugin_fetch.err /tmp/typora_plugin_checkout.err 2>/dev/null || true
+    fi
 else
     echo "  克隆中 / Cloning..."
     rm -rf "$PLUGIN_CLONE"
-    git clone --depth 1 "$PLUGIN_REPO" "$PLUGIN_CLONE"
+    git clone --depth 1 --branch "$PLUGIN_REF" "$PLUGIN_REPO" "$PLUGIN_CLONE"
 fi
 echo -e "  ${GREEN}✓${NC} 插件就绪 / Plugin ready"
+
+PLUGIN_COMMIT=$(git -C "$PLUGIN_CLONE" rev-parse HEAD)
+echo -e "  ${GREEN}✓${NC} 来源 commit / source commit: ${PLUGIN_COMMIT:0:12}"
+
+if [ ! -f "$PLUGIN_CLONE/plugin/plantUML/server.js" ]; then
+    echo -e "${RED}✗ 官方插件缺少 PlantUML 模块 / PlantUML module is missing${NC}"
+    exit 1
+fi
+echo -e "  ${GREEN}✓${NC} PlantUML 模块"
 
 # ════════════════════════════════════════════════════════
 # 安装 / Install
 # ════════════════════════════════════════════════════════
 echo -e "${YELLOW}→${NC} 安装中 / Installing..."
+
+# Stop the KeepAlive job before replacing its script. Otherwise launchd can
+# restart Node in the small window where bridge.js has been removed.
+launchctl unload "$LAUNCHD_PLIST" 2>/dev/null || true
 
 # 1. 复制插件文件 / Copy plugin
 rm -rf "$PLUGIN_DST"
@@ -168,12 +191,11 @@ if ! cp -r "$PLUGIN_CLONE/plugin" "$PLUGIN_DST" 2>/tmp/typora_cp.err; then
 fi
 echo -e "  ${GREEN}✓${NC} 插件文件 / Plugin files ($(find "$PLUGIN_DST" -type f | wc -l | tr -d ' ') files)"
 
-# 2. 复制 adapter 和 bridge / Copy adapter and bridge
-pkill -f "plugin-bridge.js" 2>/dev/null || true
-sleep 0.5
-
-cp "$SCRIPT_DIR/plugin-bridge.js" "$PLUGIN_DST/plugin-bridge.js"
-echo -e "  ${GREEN}✓${NC} plugin-bridge.js"
+# 2. 复制 bridge 组件 / Copy bridge components
+cp "$SCRIPT_DIR/bridge.js" "$PLUGIN_DST/bridge.js"
+echo -e "  ${GREEN}✓${NC} bridge.js"
+cp "$SCRIPT_DIR/network.js" "$PLUGIN_DST/network.js"
+echo -e "  ${GREEN}✓${NC} network.js"
 echo ""
 
 # 3. 设置 launchd 自动启动 / Auto-start via launchd
@@ -191,7 +213,7 @@ cat > "$LAUNCHD_PLIST" << LAUNCHDEOF
     <key>ProgramArguments</key>
     <array>
         <string>$(which node)</string>
-        <string>$PLUGIN_DST/plugin-bridge.js</string>
+        <string>$PLUGIN_DST/bridge.js</string>
         <string>--port</string>
         <string>$BRIDGE_PORT</string>
     </array>
@@ -216,7 +238,7 @@ sleep 2
 # 获取 bridge token / Get bridge token
 BRIDGE_TOKEN=""
 for i in 1 2 3; do
-    BRIDGE_TOKEN=$(curl -s "http://127.0.0.1:$BRIDGE_PORT/health" 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin)['result']['token'])" 2>/dev/null || echo "")
+    BRIDGE_TOKEN=$(curl -s "http://127.0.0.1:$BRIDGE_PORT/health" 2>/dev/null | node -e 'let s=""; process.stdin.on("data",d=>s+=d); process.stdin.on("end",()=>{try { console.log(JSON.parse(s).result.token || ""); } catch (_) { console.log(""); }})' 2>/dev/null || echo "")
     if [ -n "$BRIDGE_TOKEN" ]; then
         echo -e "  ${GREEN}✓${NC} Bridge started, token=${BRIDGE_TOKEN:0:8}..."
         break
@@ -231,8 +253,8 @@ if [ -z "$BRIDGE_TOKEN" ]; then
 fi
 
 # 注入 token 到 loader / Inject token into loader
-sed "s|%%BRIDGE_TOKEN%%|$BRIDGE_TOKEN|" "$SCRIPT_DIR/loader.mac.js" > "$PLUGIN_DST/loader.mac.js"
-echo -e "  ${GREEN}✓${NC} loader.mac.js (token injected)"
+sed "s|%%BRIDGE_TOKEN%%|$BRIDGE_TOKEN|" "$SCRIPT_DIR/loader.js" > "$PLUGIN_DST/loader.js"
+echo -e "  ${GREEN}✓${NC} loader.js (token injected)"
 echo ""
 
 # 5. 备份 index.html / Backup
@@ -244,12 +266,18 @@ else
 fi
 
 # 6. 注入 / Inject
-if grep -qF "loader.mac.js" "$INDEX_HTML"; then
+# Clean up the previous filename before ensuring the current loader is present.
+sed -i '' 's|<script src="\./plugin/loader\.mac\.js" defer></script>||g' "$INDEX_HTML"
+if grep -qF "loader.js" "$INDEX_HTML"; then
     echo -e "  ${GREEN}✓${NC} 已注入 / Already injected"
 else
-    sed -i '' 's|</body>|<script src="./plugin/loader.mac.js" defer></script></body>|' "$INDEX_HTML"
+    sed -i '' 's|</body>|<script src="./plugin/loader.js" defer></script></body>|' "$INDEX_HTML"
     echo -e "  ${GREEN}✓${NC} 已注入 index.html / Injected"
 fi
+# Typora's macOS build owns the contextual NSMenu through its native bridge.
+# Remove the old DOM adapter injection from earlier installations: it
+# intercepted right-click events but cannot provide dependable nested hit tests.
+sed -i '' 's|<script src="\./plugin/mac-context-menu\.js" defer></script>||g' "$INDEX_HTML"
 echo ""
 
 # ════════════════════════════════════════════════════════
@@ -257,11 +285,21 @@ echo ""
 # ════════════════════════════════════════════════════════
 USER_CONFIG_DIR="$HOME/.config/typora_plugin"
 USER_CONFIG="$USER_CONFIG_DIR/settings.user.toml"
+INSTALL_INFO="$USER_CONFIG_DIR/install-info.txt"
+mkdir -p "$USER_CONFIG_DIR"
+
+cat > "$INSTALL_INFO" << INFOEOF
+source_repo=$PLUGIN_REPO
+source_ref=$PLUGIN_REF
+source_commit=$PLUGIN_COMMIT
+installed_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+adapter_source=$SCRIPT_DIR
+INFOEOF
+echo -e "  ${GREEN}✓${NC} 安装来源记录 / source record → $INSTALL_INFO"
 
 if [ -f "$USER_CONFIG" ]; then
     echo -e "  ${GREEN}✓${NC} 用户配置已存在 / User config exists"
 else
-    mkdir -p "$USER_CONFIG_DIR"
     cat > "$USER_CONFIG" << 'CONFIGEOF'
 [pie_menu]
 ENABLE = true
@@ -339,11 +377,12 @@ echo ""
 # ════════════════════════════════════════════════════════
 echo -e "${YELLOW}→${NC} 验证 / Verifying..."
 E=0
-[ -f "$PLUGIN_DST/loader.mac.js" ]        && echo -e "  ${GREEN}✓${NC} loader.mac.js"       || { echo -e "  ${RED}✗${NC} loader.mac.js"; E=1; }
-[ -f "$PLUGIN_DST/plugin-bridge.js" ]     && echo -e "  ${GREEN}✓${NC} plugin-bridge.js"   || { echo -e "  ${RED}✗${NC} plugin-bridge.js"; E=1; }
+[ -f "$PLUGIN_DST/loader.js" ]        && echo -e "  ${GREEN}✓${NC} loader.js"       || { echo -e "  ${RED}✗${NC} loader.js"; E=1; }
+[ -f "$PLUGIN_DST/bridge.js" ]     && echo -e "  ${GREEN}✓${NC} bridge.js"   || { echo -e "  ${RED}✗${NC} bridge.js"; E=1; }
+[ -f "$PLUGIN_DST/network.js" ]    && echo -e "  ${GREEN}✓${NC} network.js"  || { echo -e "  ${RED}✗${NC} network.js"; E=1; }
 [ -f "$PLUGIN_DST/global/core/index.js" ] && echo -e "  ${GREEN}✓${NC} plugin core"        || { echo -e "  ${RED}✗${NC} plugin core"; E=1; }
 [ -f "$INDEX_HTML.orig" ]                 && echo -e "  ${GREEN}✓${NC} index.html 备份"    || { echo -e "  ${RED}✗${NC} backup"; E=1; }
-grep -qF "loader.mac.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader 已注入"      || { echo -e "  ${RED}✗${NC} 未注入"; E=1; }
+grep -qF "loader.js" "$INDEX_HTML"    && echo -e "  ${GREEN}✓${NC} loader 已注入"      || { echo -e "  ${RED}✗${NC} 未注入"; E=1; }
 [ -f "$LAUNCHD_PLIST" ]                   && echo -e "  ${GREEN}✓${NC} launchd plist"      || { echo -e "  ${RED}✗${NC} launchd plist"; E=1; }
 [ $E -eq 1 ] && { echo -e "\n${RED}安装失败 / Failed${NC}"; exit 1; }
 
@@ -358,7 +397,7 @@ echo ""
 echo "  打开 Typora，你应该看到："
 echo "  • 左上角蓝色 'OK' 闪烁 / Blue OK flash"
 echo "  • 右下角插件面板 / Plugin panel"
-echo "  • 右键 → 插件菜单 / Right-click menu"
+echo "  • 右键菜单使用 Typora 原生菜单 / Native macOS right-click menu"
 echo ""
 echo -e "  ${CYAN}已启用的功能:${NC}"
 echo "  • ripgrep + search_multi 全文搜索 / full-text search"
